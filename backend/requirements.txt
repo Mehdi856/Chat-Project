@@ -1,1 +1,9 @@
+fastapi
+uvicorn
+websockets
+firebase-admin
+pydantic
+bcrypt
+pycryptodome
+python-dotenv
  
