@@ -6,4 +6,6 @@ pydantic
 bcrypt
 pycryptodome
 python-dotenv
+gunicorn
+
  
