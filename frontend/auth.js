@@ -112,6 +112,7 @@ function setupLoginPage() {
         void signupContent.offsetWidth;
         
         signupContent.classList.add('fade-in');
+        signupContent.classList.add('col');
         signupContent.style.opacity = 1;
       }, 300);
       
@@ -135,6 +136,7 @@ function setupLoginPage() {
         void welcomeContent.offsetWidth;
         
         welcomeContent.classList.add('fade-in');
+        welcomeContent.classList.add('col');
         welcomeContent.style.opacity = 1;
       }, 300);
       
@@ -255,4 +257,4 @@ document.addEventListener('DOMContentLoaded', function() {
   if (container && window.innerWidth <= 768) {
     container.classList.add('mobile-view');
   }
-}); 
+});
