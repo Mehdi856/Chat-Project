@@ -1,1 +1,60 @@
-
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>webchat</title>
+  <link rel="stylesheet" href="styles.css">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="auth.js" defer></script>
+</head>
+<body>
+  <div class="container" id="container">
+    <div class="form-container sign-in-container">
+      <form action="#" id="signin-form">
+        <h1>Sign In</h1>
+        <div class="social-container">
+          <a href="#"><span>G</span></a>
+        </div>
+        <span class="divider"><span>or use your account</span></span>
+        <input type="email" placeholder="Email" id="signin-email" required />
+        <input type="password" placeholder="Password" id="signin-password" required />
+        <a href="#" class="forgot-password">Forgot your password?</a>
+        <button type="submit">Sign In</button>
+        <!-- "Don't have an account? Sign up" link with the sign-up class -->
+        <p class="toggle-form sign-up">Don't have an account? <a href="#" id="signUp">Sign up</a></p>
+      </form>
+    </div>
+    
+    <div class="form-container sign-up-container">
+      <form action="#" id="signup-form">
+        <h1>Create Account</h1>
+        <div class="social-container">
+          <a href="#"><span>G</span></a>
+        </div>
+        <span class="divider"><span>or use your email</span></span>
+        <input type="text" placeholder="Name" id="signup-name" required />
+        <input type="email" placeholder="Email" id="signup-email" required />
+        <input type="password" placeholder="Password" id="signup-password" required />
+        <button type="submit">Sign Up</button>
+        <!-- "Already have an account? Sign in" link -->
+        <p class="toggle-form">Already have an account? <a href="#" id="signIn">Sign in</a></p>
+      </form>
+    </div>
+    
+    <div class="form-container welcome-container">
+      <div class="welcome-content">
+        <h1>Welcome Back!</h1>
+        <p>Stay connected with your friends and chat in real-time. Sign in to continue your conversations.</p>
+      </div>
+      <div class="signup-content" style="display: none;">
+        <h1>Hello, Friend!</h1>
+        <p>Enter your personal details and start your journey with us today.</p>
+      </div>
+      <div class="credits">
+        Designed by <a href="https://github.com/thabet1thabet1" target="_blank">thabet1thabet1</a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
