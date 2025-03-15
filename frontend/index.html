@@ -1,11 +1,41 @@
- <!DOCTYPE html>
- <html lang="en">
- <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
- </head>
- <body>
-    
- </body>
- </html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chat App</title>
+  <link rel="stylesheet" href="styles.css">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="auth.js" defer></script>
+</head>
+<body>
+  <div class="app-container">
+    <header>
+      <h1>Chat App</h1>
+      <button id="logout-btn">Logout</button>
+    </header>
+    <div class="main-content">
+      <p>Welcome! You are logged in.</p>
+      <p>Backend connection is not available yet.</p>
+      <div id="user-info"></div>
+      <div class="credits" style="color: #6e8efb; position: relative;">
+        Designed by <a href="https://github.com/thabet1thabet1" target="_blank" style="color: #a777e3;">thabet1thabet1</a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Check if user is logged in
+      if (!isLoggedIn()) {
+        window.location.href = 'login.html';
+        return;
+      }
+      
+      // Display user info
+      const user = JSON.parse(sessionStorage.getItem('currentUser'));
+      document.getElementById('user-info').innerHTML = `<p>Logged in as: ${user.email}</p>`;
+    });
+  </script>
+</body>
+</html>
