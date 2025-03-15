@@ -1,4 +1,4 @@
-const socket = new WebSocket("wss://your-railway-backend-url/ws");
+const socket = new WebSocket("wss://chat-project-2.onrender.com/ws");
 
 socket.onopen = function () {
   console.log("Connected to chat server!");
