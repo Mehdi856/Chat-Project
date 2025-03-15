@@ -58,7 +58,7 @@ body {
 }
 
 h1 {
-  margin-bottom: 20px;
+  margin-bottom: 1px;
   font-weight: 700;
   font-size: 28px;
 }
@@ -318,7 +318,7 @@ form {
   font-size: 13px;
   opacity: 0.8;
   position: absolute;
-  bottom: 25px;
+  bottom: 38px;
   left: 0;
   transition: bottom 0.3s ease;
 }
