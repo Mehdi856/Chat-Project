@@ -2,16 +2,19 @@ from Crypto.Cipher import AES
 import base64
 import os
 
-SECRET_KEY = os.getenv("AES_SECRET_KEY", "thisisaverysecretkey")[:16]  # Must be 16 bytes
+SECRET_KEY = os.getenv("SECRET_KEY", "thisisaverysecretkey!")[:16]  # 16-byte key
 
-def encrypt_message(message):
+def encrypt_message(message: str) -> str:
+    """Encrypts a message using AES."""
     cipher = AES.new(SECRET_KEY.encode(), AES.MODE_EAX)
+    nonce = cipher.nonce
     ciphertext, tag = cipher.encrypt_and_digest(message.encode())
-    return base64.b64encode(cipher.nonce + tag + ciphertext).decode()
+    return base64.b64encode(nonce + ciphertext).decode()
 
-def decrypt_message(encrypted_message):
-    decoded = base64.b64decode(encrypted_message)
-    nonce, tag, ciphertext = decoded[:16], decoded[16:32], decoded[32:]
+def decrypt_message(encrypted_message: str) -> str:
+    """Decrypts a message using AES."""
+    data = base64.b64decode(encrypted_message)
+    nonce = data[:16]
+    ciphertext = data[16:]
     cipher = AES.new(SECRET_KEY.encode(), AES.MODE_EAX, nonce=nonce)
-    return cipher.decrypt_and_verify(ciphertext, tag).decode()
-
+    return cipher.decrypt(ciphertext).decode()
