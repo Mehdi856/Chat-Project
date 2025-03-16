@@ -4,6 +4,10 @@ import os
 import json
 import bcrypt
 
+
+print(f"🔥 FIREBASE_CONFIG exists: {bool(os.getenv('FIREBASE_CONFIG'))}")
+print(f"🔥 SECRET_KEY exists: {bool(os.getenv('SECRET_KEY'))}")
+
 # ✅ Load Firebase credentials from environment variable
 firebase_config = os.getenv("FIREBASE_CONFIG")
 
