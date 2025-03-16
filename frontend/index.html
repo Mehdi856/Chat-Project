@@ -25,8 +25,7 @@
           <input type="text" placeholder="Search..." id="search-contact">
         </div>
         <div class="contacts-list">
-          <!-- Sample contacts -->
-          <div class="contact active">
+          <div class="contact active" data-contact-id="1">
             <div class="contact-avatar">F</div>
             <div class="contact-info">
               <div class="contact-name">Fares brahimi</div>
@@ -37,7 +36,7 @@
               <div class="contact-badge">2</div>
             </div>
           </div>
-          <div class="contact">
+          <div class="contact" data-contact-id="2">
             <div class="contact-avatar">A</div>
             <div class="contact-info">
               <div class="contact-name">aymen chiboub</div>
@@ -47,7 +46,7 @@
               <div class="contact-time">Yesterday</div>
             </div>
           </div>
-          <div class="contact">
+          <div class="contact" data-contact-id="3">
             <div class="contact-avatar">A</div>
             <div class="contact-info">
               <div class="contact-name">abdou </div>
@@ -61,65 +60,82 @@
       </div>
       
       <div class="chat-main">
-        <div class="chat-header">
-          <div class="chat-contact">
-            <div class="contact-avatar">F</div>
-            <div class="contact-name">fares brahimi</div>
-          </div>
-          <div class="chat-actions">
-            <button class="action-btn">
-              <span>⋮</span>
-            </button>
+        <div class="no-chat-selected" id="no-chat-selected" style="display: none;">
+          <div class="no-chat-icon">💬</div>
+          <div class="no-chat-message">
+            Select a chat to start messaging
           </div>
         </div>
         
-        <div class="messages-container">
-          <div class="date-divider">Today</div>
-          
-          <div class="message received">
-            <div class="message-content">thabet akhdem ui t3 chat</div>
-            <div class="message-time">10:30 AM</div>
+        <div class="chat-content" id="chat-content">
+          <div class="chat-header">
+            <div class="back-button" id="back-button">🡸</div>
+            <div class="chat-contact">
+              <div class="contact-avatar">F</div>
+              <div class="contact-name">fares brahimi</div>
+            </div>
+            <div class="chat-actions">
+              <button class="action-btn">
+                <span>⋮</span>
+              </button>
+            </div>
           </div>
           
-          <div class="message sent">
-            <div class="message-content">wshndir fih</div>
-            <div class="message-time">10:32 AM</div>
+          <div class="messages-container">
+            <div class="date-divider">Today</div>
+            
+            <div class="message-group received">
+              <div class="message received">
+                <div class="message-content">thabet akhdem ui t3 chat</div>
+                <div class="message-time">10:30 AM</div>
+              </div>
+            </div>
+            
+            <div class="message-group sent">
+              <div class="message sent">
+                <div class="message-content">wshndir fih</div>
+                <div class="message-time">10:32 AM</div>
+              </div>
+            </div>
+            
+            <div class="message-group received">
+              <div class="message received">
+                <div class="message-content">lazem nwjed koulech bach tebdaw development alaise</div>
+                <div class="message-time">10:33 AM</div>
+              </div>
+            </div>
+            
+            <div class="message-group sent">
+              <div class="message sent">
+                <div class="message-content">a3tini describtion kefech ak ttkhayel l ui ha ykon psq welah rak ghir nta li fahem rohek hab testi w makach users w makan welo</div>
+                <div class="message-time">10:35 AM</div>
+              </div>
+            </div>
+            
+            <div class="message-group received">
+              <div class="message received">
+                <div class="message-content">dorka fhemt chwi beli 7abit haja simple rir bach ntesti</div>
+                <div class="message-time">10:36 AM</div>
+              </div>
+            </div>
           </div>
           
-          <div class="message received">
-            <div class="message-content">lazem nwjed koulech bach tebdaw development alaise</div>
-            <div class="message-time">10:33 AM</div>
+          <div class="message-input-container">
+            <input type="text" placeholder="Type a message..." id="message-input">
+            <button id="send-btn"></button>
           </div>
-          
-          <div class="message sent">
-            <div class="message-content">a3tini describtion kefech ak ttkhayel l ui ha ykon psq welah rak ghir nta li fahem rohek hab testi w makach users w makan welo</div>
-            <div class="message-time">10:35 AM</div>
-          </div>
-          
-          <div class="message received">
-            <div class="message-content">dorka fhemt chwi beli 7abit haja simple rir bach ntesti</div>
-            <div class="message-time">10:36 AM</div>
-          </div>
-        </div>
-        
-        <div class="message-input-container">
-          <input type="text" placeholder="Type a message..." id="message-input">
-          <button id="send-btn"></button>
         </div>
       </div>
     </div>
-    
   </div>
 
   <script>
     document.addEventListener('DOMContentLoaded', function() {
-      // Check if user is logged in
       if (!isLoggedIn()) {
         window.location.href = 'login.html';
         return;
       }
       
-      // Display user info
       const user = JSON.parse(sessionStorage.getItem('currentUser'));
       document.getElementById('user-info').innerHTML = `${user.email}`;
     });
