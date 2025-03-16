@@ -7,21 +7,108 @@
   <link rel="stylesheet" href="styles.css">
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="auth.js" defer></script>
+  <script src="chat.js" defer></script>
 </head>
 <body>
   <div class="app-container">
     <header>
       <h1>Chat App</h1>
-      <button id="logout-btn">Logout</button>
+      <div class="user-status">
+        <span id="user-info"></span>
+        <button id="logout-btn">Logout</button>
+      </div>
     </header>
-    <div class="main-content">
-      <p>Welcome! You are logged in.</p>
-      <p>Backend connection is not available yet.</p>
-      <div id="user-info"></div>
-      <div class="credits" style="color: #6e8efb; position: relative;">
-        Designed by <a href="https://github.com/thabet1thabet1" target="_blank" style="color: #a777e3;">thabet1thabet1</a>
+    
+    <div class="chat-container">
+      <div class="sidebar">
+        <div class="search-container">
+          <input type="text" placeholder="Search..." id="search-contact">
+        </div>
+        <div class="contacts-list">
+          <!-- Sample contacts -->
+          <div class="contact active">
+            <div class="contact-avatar">F</div>
+            <div class="contact-info">
+              <div class="contact-name">Fares brahimi</div>
+              <div class="contact-preview">hello</div>
+            </div>
+            <div class="contact-meta">
+              <div class="contact-time">12:45 PM</div>
+              <div class="contact-badge">2</div>
+            </div>
+          </div>
+          <div class="contact">
+            <div class="contact-avatar">A</div>
+            <div class="contact-info">
+              <div class="contact-name">aymen chiboub</div>
+              <div class="contact-preview">tfarajt l anime jdid ?</div>
+            </div>
+            <div class="contact-meta">
+              <div class="contact-time">Yesterday</div>
+            </div>
+          </div>
+          <div class="contact">
+            <div class="contact-avatar">A</div>
+            <div class="contact-info">
+              <div class="contact-name">abdou </div>
+              <div class="contact-preview">ani rayh ndir stage</div>
+            </div>
+            <div class="contact-meta">
+              <div class="contact-time">Mar 12</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="chat-main">
+        <div class="chat-header">
+          <div class="chat-contact">
+            <div class="contact-avatar">F</div>
+            <div class="contact-name">fares brahimi</div>
+          </div>
+          <div class="chat-actions">
+            <button class="action-btn">
+              <span>⋮</span>
+            </button>
+          </div>
+        </div>
+        
+        <div class="messages-container">
+          <div class="date-divider">Today</div>
+          
+          <div class="message received">
+            <div class="message-content">thabet akhdem ui t3 chat</div>
+            <div class="message-time">10:30 AM</div>
+          </div>
+          
+          <div class="message sent">
+            <div class="message-content">wshndir fih</div>
+            <div class="message-time">10:32 AM</div>
+          </div>
+          
+          <div class="message received">
+            <div class="message-content">lazem nwjed koulech bach tebdaw development alaise</div>
+            <div class="message-time">10:33 AM</div>
+          </div>
+          
+          <div class="message sent">
+            <div class="message-content">a3tini describtion kefech ak ttkhayel l ui ha ykon psq welah rak ghir nta li fahem rohek hab testi w makach users w makan welo</div>
+            <div class="message-time">10:35 AM</div>
+          </div>
+          
+          <div class="message received">
+            <div class="message-content">dorka fhemt chwi beli 7abit haja simple rir bach ntesti</div>
+            <div class="message-time">10:36 AM</div>
+          </div>
+        </div>
+        
+        <div class="message-input-container">
+          <input type="text" placeholder="Type a message..." id="message-input">
+          <button id="send-btn"></button>
+        </div>
       </div>
     </div>
+    
   </div>
 
   <script>
@@ -34,7 +121,7 @@
       
       // Display user info
       const user = JSON.parse(sessionStorage.getItem('currentUser'));
-      document.getElementById('user-info').innerHTML = `<p>Logged in as: ${user.email}</p>`;
+      document.getElementById('user-info').innerHTML = `${user.email}`;
     });
   </script>
 </body>
