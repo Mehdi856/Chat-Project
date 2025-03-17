@@ -1,142 +1,130 @@
-// ✅ Wait for DOM to load before executing scripts
-document.addEventListener("DOMContentLoaded", function () {
-  if (document.getElementById("container")) {
+import { registerUser, loginUser, logoutUser, isAuthenticated } from "./firebase.js";
+
+// Wait for DOM to load
+document.addEventListener("DOMContentLoaded", function() {
+  // Check if we're on the login page
+  const container = document.getElementById("container");
+  if (container) {
     setupLoginPage();
   }
-
-  // ✅ Handle logout button if it exists
+  
+  // Check if we're on the chat page
   const logoutBtn = document.getElementById("logout-btn");
   if (logoutBtn) {
-    logoutBtn.addEventListener("click", logoutUser);
+    logoutBtn.addEventListener("click", async function() {
+      await logoutUser();
+    });
+  }
+  
+  // Auto-redirect if authenticated but on login page
+  if (isAuthenticated() && document.getElementById("container")) {
+    window.location.href = "index.html";
   }
 });
 
 /**
- * 🔹 Setup login and sign-up form handling
+ * Setup login and signup forms
  */
 function setupLoginPage() {
   const signUpButton = document.getElementById("signUp");
   const signInButton = document.getElementById("signIn");
+  const signUpBtn = document.getElementById("signUpBtn");
+  const signInBtn = document.getElementById("signInBtn");
   const container = document.getElementById("container");
-  const welcomeContent = document.querySelector(".welcome-content");
-  const signupContent = document.querySelector(".signup-content");
-
-  // ✅ Handle form submissions
-  const signinForm = document.getElementById("signin-form");
-  const signupForm = document.getElementById("signup-form");
-
-  if (signinForm) {
-    signinForm.addEventListener("submit", async function (e) {
-      e.preventDefault();
-      const email = document.getElementById("signin-email").value.trim();
-      const password = document.getElementById("signin-password").value.trim();
-
-      if (!email || !password) {
-        showMessage("Please fill in all fields", "error");
-        return;
-      }
-
-      // ✅ Call Firebase login function
-      await loginUser(email, password);
-    });
-  }
-
-  if (signupForm) {
-    signupForm.addEventListener("submit", async function (e) {
-      e.preventDefault();
-      const email = document.getElementById("signup-email").value.trim();
-      const password = document.getElementById("signup-password").value.trim();
-
-      if (!email || !password) {
-        showMessage("Please fill in all fields", "error");
-        return;
-      }
-
-      if (password.length < 6) {
-        showMessage("Password must be at least 6 characters", "error");
-        return;
-      }
-
-      // ✅ Call Firebase register function
-      await registerUser(email, password);
-    });
-  }
-
-  // 🔹 Handle UI switching between login and sign-up
+  
+  // Handle form switching
   if (signUpButton) {
-    signUpButton.addEventListener("click", (e) => {
+    signUpButton.addEventListener("click", function(e) {
       e.preventDefault();
-      switchToSignup(container, welcomeContent, signupContent);
+      container.classList.add("right-panel-active");
     });
   }
-
+  
   if (signInButton) {
-    signInButton.addEventListener("click", (e) => {
+    signInButton.addEventListener("click", function(e) {
       e.preventDefault();
-      switchToSignin(container, welcomeContent, signupContent);
+      container.classList.remove("right-panel-active");
+    });
+  }
+  
+  if (signUpBtn) {
+    signUpBtn.addEventListener("click", function(e) {
+      e.preventDefault();
+      container.classList.add("right-panel-active");
+    });
+  }
+  
+  if (signInBtn) {
+    signInBtn.addEventListener("click", function(e) {
+      e.preventDefault();
+      container.classList.remove("right-panel-active");
+    });
+  }
+  
+  // Handle sign in form submission
+  const signinForm = document.getElementById("signin-form");
+  if (signinForm) {
+    signinForm.addEventListener("submit", async function(e) {
+      e.preventDefault();
+      const email = document.getElementById("signin-email").value;
+      const password = document.getElementById("signin-password").value;
+      
+      const result = await loginUser(email, password);
+      if (result.error) {
+        showMessage(result.error, "error");
+      }
+    });
+  }
+  
+  // Handle sign up form submission
+  const signupForm = document.getElementById("signup-form");
+  if (signupForm) {
+    signupForm.addEventListener("submit", async function(e) {
+      e.preventDefault();
+      const name = document.getElementById("signup-name").value;
+      const email = document.getElementById("signup-email").value;
+      const password = document.getElementById("signup-password").value;
+      
+      // Validate password
+      if (password.length < 6) {
+        showMessage("Password must be at least 6 characters long", "error");
+        return;
+      }
+      
+      const result = await registerUser(email, password, name);
+      if (result.error) {
+        showMessage(result.error, "error");
+      }
     });
   }
 }
 
 /**
- * 🔹 Show pop-up messages (success, error, info)
+ * Show popup message
  */
 function showMessage(message, type = "info") {
-  let messageContainer = document.querySelector(".message-container");
+  let messageContainer = document.getElementById("message-container");
+  
   if (!messageContainer) {
     messageContainer = document.createElement("div");
+    messageContainer.id = "message-container";
     messageContainer.className = "message-container";
     document.body.appendChild(messageContainer);
   }
-
+  
   const messageElement = document.createElement("div");
   messageElement.className = `message ${type}`;
   messageElement.textContent = message;
-
+  
   messageContainer.appendChild(messageElement);
-
+  
   setTimeout(() => {
     messageElement.classList.add("fade-out");
     setTimeout(() => {
       messageElement.remove();
-      if (messageContainer.children.length === 0) {
-        messageContainer.remove();
-      }
     }, 300);
   }, 3000);
 }
 
-/**
- * 🔹 Switch UI to Sign-Up
- */
-function switchToSignup(container, welcomeContent, signupContent) {
-  welcomeContent.style.opacity = 0;
-  setTimeout(() => {
-    welcomeContent.style.display = "none";
-    signupContent.style.display = "flex";
-    signupContent.style.opacity = 1;
-  }, 300);
-  container.classList.add("right-panel-active");
-}
-
-/**
- * 🔹 Switch UI to Sign-In
- */
-function switchToSignin(container, welcomeContent, signupContent) {
-  signupContent.style.opacity = 0;
-  setTimeout(() => {
-    signupContent.style.display = "none";
-    welcomeContent.style.display = "flex";
-    welcomeContent.style.opacity = 1;
-  }, 300);
-  container.classList.remove("right-panel-active");
-}
-
-/**
- * 🔹 Check if user is already logged in
- */
-document.addEventListener("DOMContentLoaded", function () {
-  if (isAuthenticated()) {
-    window.location.href = "index.html"; // ✅ Redirect to chat if already logged in
-  }
-});
+// Export showMessage function
+export { showMessage };
