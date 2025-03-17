@@ -1,321 +1,187 @@
-document.addEventListener('DOMContentLoaded', function() {
-  const messageInput = document.getElementById('message-input');
-  const sendButton = document.getElementById('send-btn');
-  const messagesContainer = document.querySelector('.messages-container');
-  const noChatSelected = document.getElementById('no-chat-selected');
-  const chatContent = document.getElementById('chat-content');
-  const backButton = document.getElementById('back-button');
-  const contactsList = document.querySelector('.contacts-list');
-  
-  // Initialize chat history in localStorage if it doesn't exist
-  if (!localStorage.getItem('chatHistory')) {
-    const initialHistory = {
-      '1': [
-        { content: "thabet akhdem ui t3 chat", isReceived: true, time: "10:30 AM" },
-        { content: "wshndir fih", isReceived: false, time: "10:32 AM" },
-        { content: "lazem nwjed koulech bach tebdaw development alaise", isReceived: true, time: "10:33 AM" },
-        { content: "a3tini describtion kefech ak ttkhayel l ui ha ykon", isReceived: false, time: "10:35 AM" },
-        { content: "dorka fhemt chwi beli 7abit haja simple rir bach ntesti", isReceived: true, time: "10:36 AM" }
-      ],
-      '2': [
-        { content: "Hi! This is a new conversation with aymen chiboub", isReceived: true, time: "Yesterday" }
-      ],
-      '3': [
-        { content: "Hi! This is a new conversation with abdou", isReceived: true, time: "Mar 12" }
-      ]
-    };
-    localStorage.setItem('chatHistory', JSON.stringify(initialHistory));
+// ✅ Wait for DOM to fully load
+document.addEventListener("DOMContentLoaded", async function () {
+  if (!isAuthenticated()) {
+    window.location.href = "login.html"; // ✅ Redirect if not authenticated
+    return;
   }
-  
-  function saveChatHistory(contactId, messages) {
-    const chatHistory = JSON.parse(localStorage.getItem('chatHistory')) || {};
-    chatHistory[contactId] = messages;
-    localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
+
+  // ✅ DOM Elements
+  const messageInput = document.getElementById("message-input");
+  const sendButton = document.getElementById("send-btn");
+  const messagesContainer = document.getElementById("messages-container");
+  const contactsList = document.getElementById("contacts-list");
+  const chatContent = document.getElementById("chat-content");
+  const noChatSelected = document.getElementById("no-chat-selected");
+  const backButton = document.getElementById("back-button");
+
+  // ✅ Get user details
+  const user = JSON.parse(localStorage.getItem("user"));
+  if (!user) {
+    window.location.href = "login.html";
+    return;
   }
-  
-  function getChatHistory(contactId) {
-    const chatHistory = JSON.parse(localStorage.getItem('chatHistory')) || {};
-    return chatHistory[contactId] || [];
-  }
-  
-  function showNoChatSelectedState() {
-    noChatSelected.style.display = 'flex';
-    chatContent.style.display = 'none';
-  }
-  
-  function showChatContent() {
-    noChatSelected.style.display = 'none';
-    chatContent.style.display = 'flex';
-    chatContent.style.flexDirection = 'column';
-    chatContent.style.height = '100%';
-  }
-  
-  showChatContent();
-  
-  backButton.addEventListener('click', function() {
-    showNoChatSelectedState();
-    const contacts = document.querySelectorAll('.contact');
-    contacts.forEach(c => c.classList.remove('active'));
-  });
-  
-  function createMessageGroup(message, isReceived, time = null) {
-    // If time is not provided, generate current time
-    if (!time) {
-      const now = new Date();
-      const hours = now.getHours();
-      const minutes = now.getMinutes();
-      const ampm = hours >= 12 ? 'PM' : 'AM';
-      const formattedHours = hours % 12 || 12;
-      const formattedMinutes = minutes < 10 ? '0' + minutes : minutes;
-      time = `${formattedHours}:${formattedMinutes} ${ampm}`;
+
+  document.getElementById("user-info").textContent = user.username || user.email;
+
+  // ✅ Fetch and display contacts from Firestore
+  await loadContacts();
+
+  // ✅ Connect to WebSocket
+  const ws = new WebSocket("wss://chat-project-2.onrender.com/ws");
+
+  ws.onopen = () => {
+    console.log("✅ Connected to WebSocket");
+    ws.send(JSON.stringify({ type: "auth", token: user.token })); // Send authentication
+  };
+
+  ws.onmessage = async (event) => {
+    const data = JSON.parse(event.data);
+    if (data.type === "message") {
+      displayMessage(data.sender, data.message, true);
     }
-    
-    const messageGroupElement = document.createElement('div');
-    messageGroupElement.className = `message-group ${isReceived ? 'received' : 'sent'}`;
-    
-    const messageElement = document.createElement('div');
-    messageElement.className = `message ${isReceived ? 'received' : 'sent'}`;
-    
-    const messageContentElement = document.createElement('div');
-    messageContentElement.className = 'message-content';
-    messageContentElement.textContent = message;
-    
-    const timeElement = document.createElement('div');
-    timeElement.className = 'message-time';
-    timeElement.textContent = time;
-    
-    messageElement.appendChild(messageContentElement);
-    messageElement.appendChild(timeElement);
-    messageGroupElement.appendChild(messageElement);
-    
-    messageGroupElement.classList.add('fade-in');
-    
-    return {
-      element: messageGroupElement,
-      time: time,
-      text: message
-    };
-  }
-  
-  function updateContactPreview(contactId, message, time) {
-    const contact = document.querySelector(`.contact[data-contact-id="${contactId}"]`);
-    if (contact) {
-      const previewElement = contact.querySelector('.contact-preview');
-      const timeElement = contact.querySelector('.contact-time');
-      
-      if (previewElement) {
-        previewElement.textContent = message;
-      }
-      
-      if (timeElement) {
-        timeElement.textContent = time;
-      }
-      
-      // Move contact to the top of the list
-      moveContactToTop(contact);
-    }
-  }
-  
-  function moveContactToTop(contactElement) {
-    // Remove the contact from its current position
-    const parent = contactElement.parentNode;
-    parent.removeChild(contactElement);
-    
-    // Insert it at the beginning of the contacts list
-    const firstContact = parent.firstChild;
-    parent.insertBefore(contactElement, firstContact);
-  }
-  
-  function sendMessage() {
+  };
+
+  ws.onclose = () => console.log("❌ WebSocket closed");
+
+  // ✅ Function to send a message
+  async function sendMessage() {
     const message = messageInput.value.trim();
-    if (message === '') return;
-    
-    const activeContact = document.querySelector('.contact.active');
-    const contactId = activeContact ? activeContact.getAttribute('data-contact-id') : '1';
-    
-    const now = new Date();
-    const hours = now.getHours();
-    const minutes = now.getMinutes();
-    const ampm = hours >= 12 ? 'PM' : 'AM';
-    const formattedHours = hours % 12 || 12;
-    const formattedMinutes = minutes < 10 ? '0' + minutes : minutes;
-    const timeString = `${formattedHours}:${formattedMinutes} ${ampm}`;
-    
-    // Create and display the message
-    const messageGroup = createMessageGroup(message, false, timeString);
-    messagesContainer.appendChild(messageGroup.element);
-    
-    // Save to chat history
-    const chatHistory = getChatHistory(contactId);
-    chatHistory.push({
-      content: message,
-      isReceived: false,
-      time: timeString
-    });
-    saveChatHistory(contactId, chatHistory);
-    
-    messageInput.value = '';
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    
-    updateContactPreview(contactId, message, timeString);
-    
-    setTimeout(() => {
-      simulateResponse(contactId);
-    }, 1000 + Math.random() * 2000);
+    if (!message) return;
+
+    const activeContact = document.querySelector(".contact.active");
+    if (!activeContact) return;
+
+    const receiverEmail = activeContact.getAttribute("data-contact-email");
+
+    const messageData = {
+      sender: user.email,
+      receiver: receiverEmail,
+      message: message,
+    };
+
+    ws.send(JSON.stringify(messageData)); // ✅ Send via WebSocket
+    displayMessage(user.email, message, false);
+
+    messageInput.value = "";
   }
-  
-  function simulateResponse(contactId) {
-    const responses = [
-      "That's interesting!",
-      "I see what you mean.",
-      "I'll get back to you on that.",
-      "Can you tell me more?",
-      "Thanks for sharing!",
-      "I appreciate your message.",
-      "Let's discuss this further."
-    ];
-    
-    const randomResponse = responses[Math.floor(Math.random() * responses.length)];
-    
-    const now = new Date();
-    const hours = now.getHours();
-    const minutes = now.getMinutes();
-    const ampm = hours >= 12 ? 'PM' : 'AM';
-    const formattedHours = hours % 12 || 12;
-    const formattedMinutes = minutes < 10 ? '0' + minutes : minutes;
-    const timeString = `${formattedHours}:${formattedMinutes} ${ampm}`;
-    
-    // Create and display the response
-    const messageGroup = createMessageGroup(randomResponse, true, timeString);
-    messagesContainer.appendChild(messageGroup.element);
-    
-    // Save to chat history
-    const chatHistory = getChatHistory(contactId);
-    chatHistory.push({
-      content: randomResponse,
-      isReceived: true,
-      time: timeString
-    });
-    saveChatHistory(contactId, chatHistory);
-    
+
+  // ✅ Display messages in chat
+  function displayMessage(sender, message, isReceived) {
+    const messageGroup = document.createElement("div");
+    messageGroup.className = `message-group ${isReceived ? "received" : "sent"}`;
+
+    const messageElement = document.createElement("div");
+    messageElement.className = `message ${isReceived ? "received" : "sent"}`;
+
+    const messageContent = document.createElement("div");
+    messageContent.className = "message-content";
+    messageContent.textContent = message;
+
+    const timeElement = document.createElement("div");
+    timeElement.className = "message-time";
+    timeElement.textContent = new Date().toLocaleTimeString();
+
+    messageElement.appendChild(messageContent);
+    messageElement.appendChild(timeElement);
+    messageGroup.appendChild(messageElement);
+
+    messagesContainer.appendChild(messageGroup);
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    
-    // Update contact preview with the response message
-    updateContactPreview(contactId, randomResponse, timeString);
   }
-  
-  sendButton.addEventListener('click', sendMessage);
-  
-  messageInput.addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') {
+
+  // ✅ Send message when button is clicked
+  sendButton.addEventListener("click", sendMessage);
+
+  // ✅ Send message when pressing Enter
+  messageInput.addEventListener("keypress", function (e) {
+    if (e.key === "Enter") {
       sendMessage();
     }
   });
-  
-  // Load and display chat for the specified contact
-  function loadContactChat(contactId, contactName) {
-    messagesContainer.innerHTML = '';
-    
-    const dateDivider = document.createElement('div');
-    dateDivider.className = 'date-divider';
-    dateDivider.textContent = 'Today';
-    messagesContainer.appendChild(dateDivider);
-    
-    const messages = getChatHistory(contactId);
-    
-    if (messages.length === 0) {
-      const welcomeMessage = {
-        content: `Hi! This is a new conversation with ${contactName}`,
-        isReceived: true,
-        time: "Just now"
-      };
-      messages.push(welcomeMessage);
-      saveChatHistory(contactId, messages);
-    }
-    
-    messages.forEach(msg => {
-      const messageGroupElement = document.createElement('div');
-      messageGroupElement.className = `message-group ${msg.isReceived ? 'received' : 'sent'}`;
-      
-      const messageElement = document.createElement('div');
-      messageElement.className = `message ${msg.isReceived ? 'received' : 'sent'}`;
-      
-      const messageContentElement = document.createElement('div');
-      messageContentElement.className = 'message-content';
-      messageContentElement.textContent = msg.content;
-      
-      const timeElement = document.createElement('div');
-      timeElement.className = 'message-time';
-      timeElement.textContent = msg.time;
-      
-      messageElement.appendChild(messageContentElement);
-      messageElement.appendChild(timeElement);
-      messageGroupElement.appendChild(messageElement);
-      
-      messagesContainer.appendChild(messageGroupElement);
-    });
-    
-    // Update contact preview with the last message, but don't move to top
-    if (messages.length > 0) {
-      const lastMessage = messages[messages.length - 1];
-      const contact = document.querySelector(`.contact[data-contact-id="${contactId}"]`);
-      if (contact) {
-        const previewElement = contact.querySelector('.contact-preview');
-        const timeElement = contact.querySelector('.contact-time');
-        
-        if (previewElement) {
-          previewElement.textContent = lastMessage.content;
+
+  // ✅ Load chat messages from Firestore
+  async function loadMessages(receiverEmail) {
+    try {
+      const response = await fetch(`https://chat-project-2.onrender.com/messages?receiver=${receiverEmail}`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${user.token}`,
+        },
+      });
+
+      const messages = await response.json();
+      messagesContainer.innerHTML = "";
+
+      messages.forEach((msg) => {
+        if (msg.sender === receiverEmail || msg.receiver === receiverEmail) {
+          displayMessage(msg.sender, msg.message, msg.sender !== user.email);
         }
-        
-        if (timeElement) {
-          timeElement.textContent = lastMessage.time;
-        }
-      }
+      });
+    } catch (error) {
+      console.error("Error loading messages:", error);
     }
-    
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
   }
-  
-  const contacts = document.querySelectorAll('.contact');
-  contacts.forEach(contact => {
-    contact.addEventListener('click', function() {
-      contacts.forEach(c => c.classList.remove('active'));
-      this.classList.add('active');
-      
-      showChatContent();
-      
-      const contactId = this.getAttribute('data-contact-id');
-      const contactName = this.querySelector('.contact-name').textContent;
-      const contactAvatar = this.querySelector('.contact-avatar').textContent;
-      
-      document.querySelector('.chat-header .contact-name').textContent = contactName;
-      document.querySelector('.chat-header .contact-avatar').textContent = contactAvatar;
-      
-      loadContactChat(contactId, contactName);
-    });
+
+  // ✅ Show chat window & hide placeholder
+  function showChatContent() {
+    noChatSelected.style.display = "none";
+    chatContent.style.display = "flex";
+    chatContent.style.flexDirection = "column";
+  }
+
+  // ✅ Handle back button (mobile view)
+  backButton.addEventListener("click", function () {
+    noChatSelected.style.display = "flex";
+    chatContent.style.display = "none";
+    document.querySelectorAll(".contact").forEach((c) => c.classList.remove("active"));
   });
-  
-  // Load the first contact's chat initially
-  const firstContact = document.querySelector('.contact');
-  if (firstContact) {
-    firstContact.classList.add('active');
-    const contactId = firstContact.getAttribute('data-contact-id');
-    const contactName = firstContact.querySelector('.contact-name').textContent;
-    const contactAvatar = firstContact.querySelector('.contact-avatar').textContent;
-    
-    document.querySelector('.chat-header .contact-name').textContent = contactName;
-    document.querySelector('.chat-header .contact-avatar').textContent = contactAvatar;
-    
-    loadContactChat(contactId, contactName);
-  }
-  
-  window.toggleChatView = function() {
-    if (noChatSelected.style.display === 'none') {
-      showNoChatSelectedState();
-      contacts.forEach(c => c.classList.remove('active'));
-    } else {
-      showChatContent();
-      contacts[0].classList.add('active');
+
+  // ✅ Fetch contacts dynamically from Firestore
+  async function loadContacts() {
+    try {
+      const contacts = await fetchContacts(); // ✅ Call the function from `firebase.js`
+      contactsList.innerHTML = ""; // Clear old contacts
+
+      contacts.forEach((contact) => {
+        if (contact.email !== user.email) {
+          const contactElement = document.createElement("div");
+          contactElement.classList.add("contact");
+          contactElement.setAttribute("data-contact-email", contact.email);
+
+          contactElement.innerHTML = `
+            <div class="contact-avatar">${contact.username.charAt(0).toUpperCase()}</div>
+            <div class="contact-info">
+              <div class="contact-name">${contact.username}</div>
+              <div class="contact-preview">Click to chat</div>
+            </div>
+          `;
+
+          contactsList.appendChild(contactElement);
+
+          // ✅ Add event listener for selecting contact
+          contactElement.addEventListener("click", function () {
+            document.querySelectorAll(".contact").forEach((c) => c.classList.remove("active"));
+            contactElement.classList.add("active");
+
+            document.querySelector(".chat-header .contact-name").textContent = contact.username;
+            showChatContent();
+            loadMessages(contact.email);
+          });
+        }
+      });
+
+      // ✅ Auto load first contact
+      const firstContact = document.querySelector(".contact");
+      if (firstContact) {
+        firstContact.classList.add("active");
+        const firstEmail = firstContact.getAttribute("data-contact-email");
+        const firstName = firstContact.querySelector(".contact-name").textContent;
+        document.querySelector(".chat-header .contact-name").textContent = firstName;
+        loadMessages(firstEmail);
+      }
+    } catch (error) {
+      console.error("Error loading contacts:", error);
     }
-  };
+  }
 });
+

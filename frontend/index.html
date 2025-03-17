@@ -6,6 +6,7 @@
   <title>Chat App</title>
   <link rel="stylesheet" href="styles.css">
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="firebase.js" defer></script>
   <script src="auth.js" defer></script>
   <script src="chat.js" defer></script>
 </head>
@@ -24,100 +25,31 @@
         <div class="search-container">
           <input type="text" placeholder="Search..." id="search-contact">
         </div>
-        <div class="contacts-list">
-          <div class="contact active" data-contact-id="1">
-            <div class="contact-avatar">F</div>
-            <div class="contact-info">
-              <div class="contact-name">Fares brahimi</div>
-              <div class="contact-preview">hello</div>
-            </div>
-            <div class="contact-meta">
-              <div class="contact-time">12:45 PM</div>
-              <div class="contact-badge">2</div>
-            </div>
-          </div>
-          <div class="contact" data-contact-id="2">
-            <div class="contact-avatar">A</div>
-            <div class="contact-info">
-              <div class="contact-name">aymen chiboub</div>
-              <div class="contact-preview">tfarajt l anime jdid ?</div>
-            </div>
-            <div class="contact-meta">
-              <div class="contact-time">Yesterday</div>
-            </div>
-          </div>
-          <div class="contact" data-contact-id="3">
-            <div class="contact-avatar">A</div>
-            <div class="contact-info">
-              <div class="contact-name">abdou </div>
-              <div class="contact-preview">ani rayh ndir stage</div>
-            </div>
-            <div class="contact-meta">
-              <div class="contact-time">Mar 12</div>
-            </div>
-          </div>
+        <div class="contacts-list" id="contacts-list">
+          <!-- Contacts will be dynamically loaded here -->
         </div>
       </div>
       
       <div class="chat-main">
-        <div class="no-chat-selected" id="no-chat-selected" style="display: none;">
+        <div class="no-chat-selected" id="no-chat-selected">
           <div class="no-chat-icon">💬</div>
-          <div class="no-chat-message">
-            Select a chat to start messaging
-          </div>
+          <div class="no-chat-message">Select a chat to start messaging</div>
         </div>
         
-        <div class="chat-content" id="chat-content">
+        <div class="chat-content" id="chat-content" style="display: none;">
           <div class="chat-header">
             <div class="back-button" id="back-button">🡸</div>
             <div class="chat-contact">
               <div class="contact-avatar">F</div>
-              <div class="contact-name">fares brahimi</div>
+              <div class="contact-name">Loading...</div>
             </div>
             <div class="chat-actions">
-              <button class="action-btn">
-                <span>⋮</span>
-              </button>
+              <button class="action-btn">⋮</button>
             </div>
           </div>
           
-          <div class="messages-container">
-            <div class="date-divider">Today</div>
-            
-            <div class="message-group received">
-              <div class="message received">
-                <div class="message-content">thabet akhdem ui t3 chat</div>
-                <div class="message-time">10:30 AM</div>
-              </div>
-            </div>
-            
-            <div class="message-group sent">
-              <div class="message sent">
-                <div class="message-content">wshndir fih</div>
-                <div class="message-time">10:32 AM</div>
-              </div>
-            </div>
-            
-            <div class="message-group received">
-              <div class="message received">
-                <div class="message-content">lazem nwjed koulech bach tebdaw development alaise</div>
-                <div class="message-time">10:33 AM</div>
-              </div>
-            </div>
-            
-            <div class="message-group sent">
-              <div class="message sent">
-                <div class="message-content">a3tini describtion kefech ak ttkhayel l ui ha ykon psq welah rak ghir nta li fahem rohek hab testi w makach users w makan welo</div>
-                <div class="message-time">10:35 AM</div>
-              </div>
-            </div>
-            
-            <div class="message-group received">
-              <div class="message received">
-                <div class="message-content">dorka fhemt chwi beli 7abit haja simple rir bach ntesti</div>
-                <div class="message-time">10:36 AM</div>
-              </div>
-            </div>
+          <div class="messages-container" id="messages-container">
+            <!-- Messages will be dynamically loaded here -->
           </div>
           
           <div class="message-input-container">
@@ -130,15 +62,60 @@
   </div>
 
   <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      if (!isLoggedIn()) {
+    document.addEventListener('DOMContentLoaded', async function() {
+      // ✅ Check authentication
+      if (!isAuthenticated()) {
         window.location.href = 'login.html';
         return;
       }
-      
-      const user = JSON.parse(sessionStorage.getItem('currentUser'));
-      document.getElementById('user-info').innerHTML = `${user.email}`;
+
+      // ✅ Get user info
+      const user = JSON.parse(localStorage.getItem("user"));
+      if (user) {
+        document.getElementById('user-info').innerText = user.username || user.email;
+      }
+
+      // ✅ Load contacts dynamically
+      await loadContacts();
     });
+
+    // ✅ Load contacts from Firestore
+    async function loadContacts() {
+      const contactsList = document.getElementById("contacts-list");
+      contactsList.innerHTML = `<p>Loading contacts...</p>`;
+
+      const contacts = await fetchContacts();
+      contactsList.innerHTML = "";
+
+      if (contacts.length === 0) {
+        contactsList.innerHTML = "<p>No contacts found.</p>";
+        return;
+      }
+
+      contacts.forEach(contact => {
+        const contactElement = document.createElement("div");
+        contactElement.classList.add("contact");
+        contactElement.dataset.contactId = contact.email;
+
+        contactElement.innerHTML = `
+          <div class="contact-avatar">${contact.username.charAt(0).toUpperCase()}</div>
+          <div class="contact-info">
+            <div class="contact-name">${contact.username}</div>
+            <div class="contact-preview">Last message...</div>
+          </div>
+        `;
+
+        contactElement.addEventListener("click", () => openChat(contact.email, contact.username));
+        contactsList.appendChild(contactElement);
+      });
+    }
+
+    function openChat(email, username) {
+      document.getElementById("no-chat-selected").style.display = "none";
+      document.getElementById("chat-content").style.display = "flex";
+      document.querySelector(".chat-contact .contact-name").innerText = username;
+      document.querySelector(".chat-contact .contact-avatar").innerText = username.charAt(0).toUpperCase();
+    }
   </script>
 </body>
 </html>
