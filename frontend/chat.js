@@ -1,187 +1,381 @@
-// ✅ Wait for DOM to fully load
-document.addEventListener("DOMContentLoaded", async function () {
-  if (!isAuthenticated()) {
-    window.location.href = "login.html"; // ✅ Redirect if not authenticated
-    return;
-  }
+import { 
+  getCurrentUser, 
+  fetchContacts, 
+  saveMessage, 
+  fetchMessages, 
+  logoutUser 
+} from './firebase.js';
 
-  // ✅ DOM Elements
-  const messageInput = document.getElementById("message-input");
-  const sendButton = document.getElementById("send-btn");
-  const messagesContainer = document.getElementById("messages-container");
-  const contactsList = document.getElementById("contacts-list");
-  const chatContent = document.getElementById("chat-content");
-  const noChatSelected = document.getElementById("no-chat-selected");
-  const backButton = document.getElementById("back-button");
+import { showMessage } from './auth.js';
 
-  // ✅ Get user details
-  const user = JSON.parse(localStorage.getItem("user"));
-  if (!user) {
+// DOM Elements
+const contactsList = document.getElementById('contacts-list');
+const searchInput = document.getElementById('search-contact');
+const noChatSelected = document.getElementById('no-chat-selected');
+const activeChat = document.getElementById('active-chat');
+const messagesContainer = document.getElementById('messages-container');
+const messageInput = document.getElementById('message-input');
+const sendBtn = document.getElementById('send-btn');
+const backButton = document.getElementById('back-button');
+const userInfoSpan = document.getElementById('user-info');
+const logoutBtn = document.getElementById('logout-btn');
+
+// Current chat state
+let currentChat = {
+  uid: null,
+  username: null
+};
+
+// Current user
+let currentUser = null;
+
+// Contacts data
+let contacts = [];
+
+/**
+ * Initialize chat application
+ */
+async function initChat() {
+  // Check if user is authenticated
+  currentUser = getCurrentUser();
+  
+  if (!currentUser) {
     window.location.href = "login.html";
     return;
   }
-
-  document.getElementById("user-info").textContent = user.username || user.email;
-
-  // ✅ Fetch and display contacts from Firestore
+  
+  // Display user info
+  userInfoSpan.textContent = currentUser.username || currentUser.email;
+  
+  // Load contacts
   await loadContacts();
+  
+  // Set up event listeners
+  setupEventListeners();
+}
 
-  // ✅ Connect to WebSocket
-  const ws = new WebSocket("wss://chat-project-2.onrender.com/ws");
+/**
+ * Load all contacts from Firestore
+ */
+async function loadContacts() {
+  try {
+    contacts = await fetchContacts();
+    
+    // Filter out current user
+    contacts = contacts.filter(contact => contact.uid !== currentUser.uid);
+    
+    // Render contacts list
+    renderContacts(contacts);
+  } catch (error) {
+    console.error("Error loading contacts:", error);
+    showMessage("Failed to load contacts", "error");
+  }
+}
 
-  ws.onopen = () => {
-    console.log("✅ Connected to WebSocket");
-    ws.send(JSON.stringify({ type: "auth", token: user.token })); // Send authentication
-  };
+/**
+ * Render contacts in the sidebar
+ */
+function renderContacts(contactsToRender) {
+  contactsList.innerHTML = '';
+  
+  if (contactsToRender.length === 0) {
+    contactsList.innerHTML = '<div class="no-contacts">No contacts found</div>';
+    return;
+  }
+  
+  contactsToRender.forEach(contact => {
+    const contactElement = document.createElement('div');
+    contactElement.className = 'contact';
+    contactElement.dataset.uid = contact.uid;
+    
+    // Get initials for avatar
+    const initials = getInitials(contact.username || contact.email);
+    
+    contactElement.innerHTML = `
+      <div class="contact-avatar">${initials}</div>
+      <div class="contact-info">
+        <div class="contact-name">${contact.username || contact.email}</div>
+        <div class="contact-preview">Click to start chatting</div>
+      </div>
+    `;
+    
+    // Add click event to start chat
+    contactElement.addEventListener('click', () => {
+      startChat(contact);
+    });
+    
+    contactsList.appendChild(contactElement);
+  });
+}
 
-  ws.onmessage = async (event) => {
-    const data = JSON.parse(event.data);
-    if (data.type === "message") {
-      displayMessage(data.sender, data.message, true);
+/**
+ * Get initials from name or email
+ */
+function getInitials(name) {
+  if (!name) return '?';
+  
+  if (name.includes('@')) {
+    // It's an email
+    return name.split('@')[0].charAt(0).toUpperCase();
+  }
+  
+  // It's a name
+  const nameParts = name.split(' ');
+  if (nameParts.length > 1) {
+    return (nameParts[0].charAt(0) + nameParts[1].charAt(0)).toUpperCase();
+  }
+  
+  return name.charAt(0).toUpperCase();
+}
+
+/**
+ * Start a chat with a contact
+ */
+function startChat(contact) {
+  // Update current chat
+  currentChat.uid = contact.uid;
+  currentChat.username = contact.username || contact.email;
+  
+  // Update UI
+  noChatSelected.style.display = 'none';
+  activeChat.style.display = 'flex';
+  
+  // Update chat header
+  document.getElementById('chat-avatar').textContent = getInitials(currentChat.username);
+  document.getElementById('chat-name').textContent = currentChat.username;
+  
+  // Clear previous messages
+  messagesContainer.innerHTML = '';
+  
+  // Highlight selected contact
+  const contacts = document.querySelectorAll('.contact');
+  contacts.forEach(c => c.classList.remove('active'));
+  document.querySelector(`.contact[data-uid="${contact.uid}"]`).classList.add('active');
+  
+  // Load messages
+  loadMessages();
+  
+  // Focus on input
+  messageInput.focus();
+}
+
+/**
+ * Load messages between current user and selected contact
+ */
+async function loadMessages() {
+  try {
+    const messages = await fetchMessages(currentUser.uid, currentChat.uid);
+    
+    if (messages.length === 0) {
+      // No messages yet
+      messagesContainer.innerHTML = `
+        <div class="no-messages">
+          No messages yet. Say hello!
+        </div>
+      `;
+      return;
     }
-  };
-
-  ws.onclose = () => console.log("❌ WebSocket closed");
-
-  // ✅ Function to send a message
-  async function sendMessage() {
-    const message = messageInput.value.trim();
-    if (!message) return;
-
-    const activeContact = document.querySelector(".contact.active");
-    if (!activeContact) return;
-
-    const receiverEmail = activeContact.getAttribute("data-contact-email");
-
-    const messageData = {
-      sender: user.email,
-      receiver: receiverEmail,
-      message: message,
-    };
-
-    ws.send(JSON.stringify(messageData)); // ✅ Send via WebSocket
-    displayMessage(user.email, message, false);
-
-    messageInput.value = "";
+    
+    // Group messages by date
+    const groupedMessages = groupMessagesByDate(messages);
+    
+    // Render message groups
+    renderMessageGroups(groupedMessages);
+    
+    // Scroll to bottom
+    scrollToBottom();
+  } catch (error) {
+    console.error("Error loading messages:", error);
+    showMessage("Failed to load messages", "error");
   }
+}
 
-  // ✅ Display messages in chat
-  function displayMessage(sender, message, isReceived) {
-    const messageGroup = document.createElement("div");
-    messageGroup.className = `message-group ${isReceived ? "received" : "sent"}`;
+/**
+ * Group messages by date
+ */
+function groupMessagesByDate(messages) {
+  const groups = {};
+  
+  messages.forEach(message => {
+    const date = new Date(message.timestamp);
+    const dateStr = date.toLocaleDateString();
+    
+    if (!groups[dateStr]) {
+      groups[dateStr] = [];
+    }
+    
+    groups[dateStr].push(message);
+  });
+  
+  return groups;
+}
 
-    const messageElement = document.createElement("div");
-    messageElement.className = `message ${isReceived ? "received" : "sent"}`;
+/**
+ * Render message groups
+ */
+function renderMessageGroups(groups) {
+  messagesContainer.innerHTML = '';
+  
+  Object.keys(groups).forEach(date => {
+    // Add date divider
+    const divider = document.createElement('div');
+    divider.className = 'date-divider';
+    divider.textContent = formatDate(date);
+    messagesContainer.appendChild(divider);
+    
+    // Add messages for this date
+    const messages = groups[date];
+    let lastSender = null;
+    let messageGroup = null;
+    
+    messages.forEach(message => {
+      const isSent = message.sender === currentUser.uid;
+      const sender = isSent ? currentUser.uid : currentChat.uid;
+      
+      // Start a new message group if sender changes
+      if (sender !== lastSender) {
+        messageGroup = document.createElement('div');
+        messageGroup.className = `message-group ${isSent ? 'sent' : 'received'}`;
+        messagesContainer.appendChild(messageGroup);
+        lastSender = sender;
+      }
+      
+      // Create message element
+      const messageElement = document.createElement('div');
+      messageElement.className = `message ${isSent ? 'sent' : 'received'} fade-in`;
+      
+      const time = new Date(message.timestamp).toLocaleTimeString([], { 
+        hour: '2-digit', 
+        minute: '2-digit' 
+      });
+      
+      messageElement.innerHTML = `
+        <div class="message-content">${message.message}</div>
+        <div class="message-time">${time}</div>
+      `;
+      
+      messageGroup.appendChild(messageElement);
+    });
+  });
+  
+  // Scroll to bottom
+  scrollToBottom();
+}
 
-    const messageContent = document.createElement("div");
-    messageContent.className = "message-content";
-    messageContent.textContent = message;
-
-    const timeElement = document.createElement("div");
-    timeElement.className = "message-time";
-    timeElement.textContent = new Date().toLocaleTimeString();
-
-    messageElement.appendChild(messageContent);
-    messageElement.appendChild(timeElement);
-    messageGroup.appendChild(messageElement);
-
-    messagesContainer.appendChild(messageGroup);
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+/**
+ * Format date for display
+ */
+function formatDate(dateStr) {
+  const today = new Date().toLocaleDateString();
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = yesterday.toLocaleDateString();
+  
+  if (dateStr === today) {
+    return "Today";
+  } else if (dateStr === yesterdayStr) {
+    return "Yesterday";
+  } else {
+    return dateStr;
   }
+}
 
-  // ✅ Send message when button is clicked
-  sendButton.addEventListener("click", sendMessage);
+/**
+ * Send a message
+ */
+async function sendMessage() {
+  const message = messageInput.value.trim();
+  
+  if (!message) return;
+  
+  try {
+    const success = await saveMessage(currentUser.uid, currentChat.uid, message);
+    
+    if (success) {
+      // Clear input
+      messageInput.value = '';
+      
+      // Reload messages
+      await loadMessages();
+      
+      // Focus input
+      messageInput.focus();
+    } else {
+      showMessage("Failed to send message", "error");
+    }
+  } catch (error) {
+    console.error("Error sending message:", error);
+    showMessage("Failed to send message", "error");
+  }
+}
 
-  // ✅ Send message when pressing Enter
-  messageInput.addEventListener("keypress", function (e) {
-    if (e.key === "Enter") {
+/**
+ * Scroll messages container to bottom
+ */
+function scrollToBottom() {
+  messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+/**
+ * Filter contacts by search term
+ */
+function filterContacts() {
+  const searchTerm = searchInput.value.toLowerCase();
+  
+  if (!searchTerm) {
+    renderContacts(contacts);
+    return;
+  }
+  
+  const filtered = contacts.filter(contact => {
+    const username = (contact.username || contact.email).toLowerCase();
+    return username.includes(searchTerm);
+  });
+  
+  renderContacts(filtered);
+}
+
+/**
+ * Setup event listeners
+ */
+function setupEventListeners() {
+  // Send message on button click
+  sendBtn.addEventListener('click', sendMessage);
+  
+  // Send message on Enter key
+  messageInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
       sendMessage();
     }
   });
-
-  // ✅ Load chat messages from Firestore
-  async function loadMessages(receiverEmail) {
-    try {
-      const response = await fetch(`https://chat-project-2.onrender.com/messages?receiver=${receiverEmail}`, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${user.token}`,
-        },
-      });
-
-      const messages = await response.json();
-      messagesContainer.innerHTML = "";
-
-      messages.forEach((msg) => {
-        if (msg.sender === receiverEmail || msg.receiver === receiverEmail) {
-          displayMessage(msg.sender, msg.message, msg.sender !== user.email);
-        }
-      });
-    } catch (error) {
-      console.error("Error loading messages:", error);
-    }
-  }
-
-  // ✅ Show chat window & hide placeholder
-  function showChatContent() {
-    noChatSelected.style.display = "none";
-    chatContent.style.display = "flex";
-    chatContent.style.flexDirection = "column";
-  }
-
-  // ✅ Handle back button (mobile view)
-  backButton.addEventListener("click", function () {
-    noChatSelected.style.display = "flex";
-    chatContent.style.display = "none";
-    document.querySelectorAll(".contact").forEach((c) => c.classList.remove("active"));
+  
+  // Back button (mobile view)
+  backButton.addEventListener('click', () => {
+    activeChat.style.display = 'none';
+    noChatSelected.style.display = 'flex';
+    currentChat = { uid: null, username: null };
+    
+    // Remove active class from contacts
+    const contacts = document.querySelectorAll('.contact');
+    contacts.forEach(c => c.classList.remove('active'));
   });
+  
+  // Search contacts
+  searchInput.addEventListener('input', filterContacts);
+  
+  // Logout button
+  logoutBtn.addEventListener('click', async () => {
+    await logoutUser();
+  });
+}
 
-  // ✅ Fetch contacts dynamically from Firestore
-  async function loadContacts() {
-    try {
-      const contacts = await fetchContacts(); // ✅ Call the function from `firebase.js`
-      contactsList.innerHTML = ""; // Clear old contacts
-
-      contacts.forEach((contact) => {
-        if (contact.email !== user.email) {
-          const contactElement = document.createElement("div");
-          contactElement.classList.add("contact");
-          contactElement.setAttribute("data-contact-email", contact.email);
-
-          contactElement.innerHTML = `
-            <div class="contact-avatar">${contact.username.charAt(0).toUpperCase()}</div>
-            <div class="contact-info">
-              <div class="contact-name">${contact.username}</div>
-              <div class="contact-preview">Click to chat</div>
-            </div>
-          `;
-
-          contactsList.appendChild(contactElement);
-
-          // ✅ Add event listener for selecting contact
-          contactElement.addEventListener("click", function () {
-            document.querySelectorAll(".contact").forEach((c) => c.classList.remove("active"));
-            contactElement.classList.add("active");
-
-            document.querySelector(".chat-header .contact-name").textContent = contact.username;
-            showChatContent();
-            loadMessages(contact.email);
-          });
-        }
-      });
-
-      // ✅ Auto load first contact
-      const firstContact = document.querySelector(".contact");
-      if (firstContact) {
-        firstContact.classList.add("active");
-        const firstEmail = firstContact.getAttribute("data-contact-email");
-        const firstName = firstContact.querySelector(".contact-name").textContent;
-        document.querySelector(".chat-header .contact-name").textContent = firstName;
-        loadMessages(firstEmail);
-      }
-    } catch (error) {
-      console.error("Error loading contacts:", error);
-    }
+// Initialize chat when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+  // Check if we're on the chat page
+  if (document.querySelector('.chat-container')) {
+    initChat();
   }
 });
 
+// Export functions
+export { initChat };
