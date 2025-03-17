@@ -2,7 +2,7 @@ import {
   getCurrentUser, 
   fetchContacts, 
   saveMessage, 
-  fetchMessages, 
+  listenForMessages, 
   logoutUser 
 } from './firebase.js';
 
@@ -152,157 +152,67 @@ function startChat(contact) {
   contacts.forEach(c => c.classList.remove('active'));
   document.querySelector(`.contact[data-uid="${contact.uid}"]`).classList.add('active');
   
-  // Load messages
-  loadMessages();
+  // Listen for messages in real time
+  listenForMessages(currentUser.uid, currentChat.uid, renderMessages);
   
   // Focus on input
   messageInput.focus();
 }
 
 /**
- * Load messages between current user and selected contact
+ * Render messages in the chat window
  */
-async function loadMessages() {
-  try {
-    const messages = await fetchMessages(currentUser.uid, currentChat.uid);
-    
-    if (messages.length === 0) {
-      // No messages yet
-      messagesContainer.innerHTML = `
-        <div class="no-messages">
-          No messages yet. Say hello!
-        </div>
-      `;
-      return;
-    }
-    
-    // Group messages by date
-    const groupedMessages = groupMessagesByDate(messages);
-    
-    // Render message groups
-    renderMessageGroups(groupedMessages);
-    
-    // Scroll to bottom
-    scrollToBottom();
-  } catch (error) {
-    console.error("Error loading messages:", error);
-    showMessage("Failed to load messages", "error");
-  }
-}
+function renderMessages(messages) {
+  messagesContainer.innerHTML = ''; // Clear existing messages
 
-/**
- * Group messages by date
- */
-function groupMessagesByDate(messages) {
-  const groups = {};
-  
-  messages.forEach(message => {
-    const date = new Date(message.timestamp);
-    const dateStr = date.toLocaleDateString();
-    
-    if (!groups[dateStr]) {
-      groups[dateStr] = [];
-    }
-    
-    groups[dateStr].push(message);
-  });
-  
-  return groups;
-}
+  messages.forEach(msg => {
+    const messageElement = document.createElement('div');
+    messageElement.classList.add('message');
 
-/**
- * Render message groups
- */
-function renderMessageGroups(groups) {
-  messagesContainer.innerHTML = '';
-  
-  Object.keys(groups).forEach(date => {
-    // Add date divider
-    const divider = document.createElement('div');
-    divider.className = 'date-divider';
-    divider.textContent = formatDate(date);
-    messagesContainer.appendChild(divider);
-    
-    // Add messages for this date
-    const messages = groups[date];
-    let lastSender = null;
-    let messageGroup = null;
-    
-    messages.forEach(message => {
-      const isSent = message.sender === currentUser.uid;
-      const sender = isSent ? currentUser.uid : currentChat.uid;
-      
-      // Start a new message group if sender changes
-      if (sender !== lastSender) {
-        messageGroup = document.createElement('div');
-        messageGroup.className = `message-group ${isSent ? 'sent' : 'received'}`;
-        messagesContainer.appendChild(messageGroup);
-        lastSender = sender;
-      }
-      
-      // Create message element
-      const messageElement = document.createElement('div');
-      messageElement.className = `message ${isSent ? 'sent' : 'received'} fade-in`;
-      
-      const time = new Date(message.timestamp).toLocaleTimeString([], { 
-        hour: '2-digit', 
-        minute: '2-digit' 
-      });
-      
-      messageElement.innerHTML = `
-        <div class="message-content">${message.message}</div>
-        <div class="message-time">${time}</div>
-      `;
-      
-      messageGroup.appendChild(messageElement);
-    });
+    if (msg.sender === currentUser.uid) {
+      messageElement.classList.add('sent');
+    } else {
+      messageElement.classList.add('received');
+    }
+
+    messageElement.innerHTML = `
+      <div class="message-content">${msg.message}</div>
+      <div class="message-timestamp">${formatTimestamp(msg.timestamp)}</div>
+    `;
+
+    messagesContainer.appendChild(messageElement);
   });
-  
+
   // Scroll to bottom
   scrollToBottom();
 }
 
 /**
- * Format date for display
+ * Format timestamp for display
  */
-function formatDate(dateStr) {
-  const today = new Date().toLocaleDateString();
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  const yesterdayStr = yesterday.toLocaleDateString();
-  
-  if (dateStr === today) {
-    return "Today";
-  } else if (dateStr === yesterdayStr) {
-    return "Yesterday";
-  } else {
-    return dateStr;
-  }
+function formatTimestamp(timestamp) {
+  const date = new Date(timestamp);
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
 /**
- * Send a message
+ * Scroll chat to bottom
+ */
+function scrollToBottom() {
+  messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+/**
+ * Send a new message
  */
 async function sendMessage() {
   const message = messageInput.value.trim();
-  
-  if (!message) return;
-  
+  if (message === '' || !currentChat.uid) return;
+
   try {
-    const success = await saveMessage(currentUser.uid, currentChat.uid, message);
-    
-    if (success) {
-      // Clear input
-      messageInput.value = '';
-      
-      // Reload messages
-      await loadMessages();
-      
-      // Focus input
-      messageInput.focus();
-    } else {
-      showMessage("Failed to send message", "error");
-    }
+    await saveMessage(currentUser.uid, currentChat.uid, message);
+    messageInput.value = '';
+    messageInput.focus();
   } catch (error) {
     console.error("Error sending message:", error);
     showMessage("Failed to send message", "error");
@@ -310,72 +220,33 @@ async function sendMessage() {
 }
 
 /**
- * Scroll messages container to bottom
- */
-function scrollToBottom() {
-  messagesContainer.scrollTop = messagesContainer.scrollHeight;
-}
-
-/**
- * Filter contacts by search term
- */
-function filterContacts() {
-  const searchTerm = searchInput.value.toLowerCase();
-  
-  if (!searchTerm) {
-    renderContacts(contacts);
-    return;
-  }
-  
-  const filtered = contacts.filter(contact => {
-    const username = (contact.username || contact.email).toLowerCase();
-    return username.includes(searchTerm);
-  });
-  
-  renderContacts(filtered);
-}
-
-/**
- * Setup event listeners
+ * Set up event listeners
  */
 function setupEventListeners() {
-  // Send message on button click
   sendBtn.addEventListener('click', sendMessage);
-  
-  // Send message on Enter key
-  messageInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
-      sendMessage();
-    }
+  messageInput.addEventListener('keypress', (event) => {
+    if (event.key === 'Enter') sendMessage();
   });
   
-  // Back button (mobile view)
+  logoutBtn.addEventListener('click', async () => {
+    await logoutUser();
+  });
+
   backButton.addEventListener('click', () => {
     activeChat.style.display = 'none';
     noChatSelected.style.display = 'flex';
     currentChat = { uid: null, username: null };
-    
-    // Remove active class from contacts
-    const contacts = document.querySelectorAll('.contact');
-    contacts.forEach(c => c.classList.remove('active'));
   });
-  
-  // Search contacts
-  searchInput.addEventListener('input', filterContacts);
-  
-  // Logout button
-  logoutBtn.addEventListener('click', async () => {
-    await logoutUser();
+
+  searchInput.addEventListener('input', () => {
+    const query = searchInput.value.toLowerCase();
+    const filteredContacts = contacts.filter(contact => 
+      contact.username.toLowerCase().includes(query) || 
+      contact.email.toLowerCase().includes(query)
+    );
+    renderContacts(filteredContacts);
   });
 }
 
-// Initialize chat when DOM is loaded
-document.addEventListener('DOMContentLoaded', function() {
-  // Check if we're on the chat page
-  if (document.querySelector('.chat-container')) {
-    initChat();
-  }
-});
-
-// Export functions
-export { initChat };
+// Initialize chat on page load
+initChat();
