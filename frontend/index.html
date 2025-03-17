@@ -3,57 +3,65 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Chat App</title>
+  <title>Web Chat</title>
   <link rel="stylesheet" href="styles.css">
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <script src="firebase.js" defer></script>
-  <script src="auth.js" defer></script>
-  <script src="chat.js" defer></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body>
   <div class="app-container">
+    <!-- Header -->
     <header>
-      <h1>Chat App</h1>
       <div class="user-status">
-        <span id="user-info"></span>
-        <button id="logout-btn">Logout</button>
+        <span id="user-info">Loading...</span>
       </div>
+      <h1>Web Chat</h1>
+      <button id="logout-btn">Logout</button>
     </header>
-    
+
+    <!-- Chat Container -->
     <div class="chat-container">
+      <!-- Sidebar with contacts -->
       <div class="sidebar">
         <div class="search-container">
-          <input type="text" placeholder="Search..." id="search-contact">
+          <input type="text" id="search-contact" placeholder="Search contacts...">
         </div>
         <div class="contacts-list" id="contacts-list">
-          <!-- Contacts will be dynamically loaded here -->
+          <!-- Contacts will be loaded dynamically -->
         </div>
       </div>
-      
+
+      <!-- Main chat area -->
       <div class="chat-main">
+        <!-- Initially show welcome message -->
         <div class="no-chat-selected" id="no-chat-selected">
           <div class="no-chat-icon">💬</div>
-          <div class="no-chat-message">Select a chat to start messaging</div>
+          <div class="no-chat-message">
+            Select a contact to start chatting
+          </div>
         </div>
-        
-        <div class="chat-content" id="chat-content" style="display: none;">
+
+        <!-- Active chat interface (hidden initially) -->
+        <div id="active-chat" style="display: none; flex-direction: column; height: 100%;">
           <div class="chat-header">
-            <div class="back-button" id="back-button">🡸</div>
+            <div class="back-button" id="back-button">←</div>
             <div class="chat-contact">
-              <div class="contact-avatar">F</div>
-              <div class="contact-name">Loading...</div>
+              <div class="contact-avatar" id="chat-avatar"></div>
+              <div class="contact-info">
+                <div class="contact-name" id="chat-name"></div>
+              </div>
             </div>
             <div class="chat-actions">
-              <button class="action-btn">⋮</button>
+              <!-- Chat action buttons can be added here -->
             </div>
           </div>
-          
+
           <div class="messages-container" id="messages-container">
-            <!-- Messages will be dynamically loaded here -->
+            <!-- Messages will be loaded dynamically -->
           </div>
-          
+
           <div class="message-input-container">
-            <input type="text" placeholder="Type a message..." id="message-input">
+            <input type="text" id="message-input" placeholder="Type a message...">
             <button id="send-btn"></button>
           </div>
         </div>
@@ -61,61 +69,9 @@
     </div>
   </div>
 
-  <script>
-    document.addEventListener('DOMContentLoaded', async function() {
-      // ✅ Check authentication
-      if (!isAuthenticated()) {
-        window.location.href = 'login.html';
-        return;
-      }
-
-      // ✅ Get user info
-      const user = JSON.parse(localStorage.getItem("user"));
-      if (user) {
-        document.getElementById('user-info').innerText = user.username || user.email;
-      }
-
-      // ✅ Load contacts dynamically
-      await loadContacts();
-    });
-
-    // ✅ Load contacts from Firestore
-    async function loadContacts() {
-      const contactsList = document.getElementById("contacts-list");
-      contactsList.innerHTML = `<p>Loading contacts...</p>`;
-
-      const contacts = await fetchContacts();
-      contactsList.innerHTML = "";
-
-      if (contacts.length === 0) {
-        contactsList.innerHTML = "<p>No contacts found.</p>";
-        return;
-      }
-
-      contacts.forEach(contact => {
-        const contactElement = document.createElement("div");
-        contactElement.classList.add("contact");
-        contactElement.dataset.contactId = contact.email;
-
-        contactElement.innerHTML = `
-          <div class="contact-avatar">${contact.username.charAt(0).toUpperCase()}</div>
-          <div class="contact-info">
-            <div class="contact-name">${contact.username}</div>
-            <div class="contact-preview">Last message...</div>
-          </div>
-        `;
-
-        contactElement.addEventListener("click", () => openChat(contact.email, contact.username));
-        contactsList.appendChild(contactElement);
-      });
-    }
-
-    function openChat(email, username) {
-      document.getElementById("no-chat-selected").style.display = "none";
-      document.getElementById("chat-content").style.display = "flex";
-      document.querySelector(".chat-contact .contact-name").innerText = username;
-      document.querySelector(".chat-contact .contact-avatar").innerText = username.charAt(0).toUpperCase();
-    }
-  </script>
+  <!-- Import scripts -->
+  <script type="module" src="firebase.js"></script>
+  <script type="module" src="auth.js"></script>
+  <script type="module" src="chat.js"></script>
 </body>
 </html>
