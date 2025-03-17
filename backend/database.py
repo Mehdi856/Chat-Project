@@ -26,25 +26,35 @@ else:
 db = firestore.client()
 
 # ✅ Function to create a user (with password hashing)
-def create_user(email, username, password):
+# ✅ Function to create a user (with ordered fields)
+def create_user(username, password, email):
     try:
+        # Reference the document by the user's email
         user_ref = db.collection("users").document(email)
-        
+
+        # Check if the user already exists
         if user_ref.get().exists:
             return {"status": "error", "message": "User already exists"}
 
+        # Hash the password
         hashed_password = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
-        
-        user_ref.set({
-            "email": email,
+
+        # Use an ordered dictionary to ensure field order
+        user_data = {
             "username": username,
             "password": hashed_password,  # Store hashed password
+            "email": email,
             "created_at": firestore.SERVER_TIMESTAMP  # Track user creation time
-        })
+        }
+
+        # Save user data to Firestore
+        user_ref.set(user_data)
+
         return {"status": "success", "message": "User created successfully!"}
-    
+
     except Exception as e:
         return {"status": "error", "message": f"Failed to create user: {e}"}
+
 
 # ✅ Function to log in a user
 def login_user(email, password):
