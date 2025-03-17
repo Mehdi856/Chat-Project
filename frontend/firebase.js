@@ -1,14 +1,16 @@
 // Import Firebase libraries
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.2/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.7.2/firebase-auth.js";
-import { getFirestore, collection, getDocs, addDoc, setDoc, doc, query, where, orderBy, getDoc } from "https://www.gstatic.com/firebasejs/10.7.2/firebase-firestore.js";
+import { 
+  getFirestore, collection, getDocs, addDoc, setDoc, doc, query, where, orderBy, getDoc, onSnapshot 
+} from "https://www.gstatic.com/firebasejs/10.7.2/firebase-firestore.js";
 
 // Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyBuGGwsMdxtxDjPBJ8YcqVIX3OixffyO8E",
   authDomain: "chat-room-6db06.firebaseapp.com",
   projectId: "chat-room-6db06",
-  storageBucket: "chat-room-6db06.firebaseapp.com",
+  storageBucket: "chat-room-6db06.appspot.com",
   messagingSenderId: "441142419097",
   appId: "1:441142419097:web:beb9d622a6c11272496208"
 };
@@ -25,29 +27,22 @@ async function registerUser(email, password, name) {
   try {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
-    
-    // Use the name parameter or generate a username
     const username = name || email.split('@')[0];
 
-    // Store user in Firestore
     await setDoc(doc(db, "users", user.uid), {
       username: username,
       email: user.email,
       created_at: new Date().toISOString()
     });
 
-    // Get Firebase Auth Token
     const token = await user.getIdToken();
-
-    // Store user info in localStorage
     localStorage.setItem("user", JSON.stringify({ 
       email: user.email, 
       username: username, 
       token: token,
       uid: user.uid 
     }));
-    
-    // Redirect to chat page
+
     window.location.href = "index.html";
     return true;
   } catch (error) {
@@ -64,24 +59,20 @@ async function loginUser(email, password) {
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
     
-    // Get Firebase Auth Token
     const token = await user.getIdToken();
     
-    // Get user data from Firestore
     const userDocRef = doc(db, "users", user.uid);
     const userDoc = await getDoc(userDocRef);
     const userData = userDoc.data();
     const username = userData?.username || email.split('@')[0];
     
-    // Store user info in localStorage
     localStorage.setItem("user", JSON.stringify({ 
       email: user.email, 
       username: username, 
       token: token,
       uid: user.uid 
     }));
-    
-    // Redirect to chat page
+
     window.location.href = "index.html";
     return true;
   } catch (error) {
@@ -159,31 +150,24 @@ async function saveMessage(sender, receiver, message) {
 }
 
 /**
- * Fetch messages between two users
+ * Listen for real-time messages
  */
-async function fetchMessages(user1, user2) {
-  try {
-    const messagesRef = collection(db, "messages");
-    const q = query(
-      messagesRef,
-      where("sender", "in", [user1, user2]),
-      where("receiver", "in", [user1, user2]),
-      orderBy("timestamp", "asc")
-    );
-    
-    const querySnapshot = await getDocs(q);
+function listenForMessages(user1, user2, callback) {
+  const messagesRef = collection(db, "messages");
+  const q = query(
+    messagesRef,
+    where("sender", "in", [user1, user2]),
+    where("receiver", "in", [user1, user2]),
+    orderBy("timestamp", "asc")
+  );
+
+  return onSnapshot(q, (snapshot) => {
     const messages = [];
-    querySnapshot.forEach((doc) => {
-      messages.push({
-        id: doc.id,
-        ...doc.data()
-      });
+    snapshot.forEach((doc) => {
+      messages.push({ id: doc.id, ...doc.data() });
     });
-    return messages;
-  } catch (error) {
-    console.error("Error fetching messages:", error);
-    return [];
-  }
+    callback(messages); // Update UI
+  });
 }
 
 // Export functions
@@ -191,5 +175,5 @@ export {
   auth, db, 
   registerUser, loginUser, logoutUser, 
   isAuthenticated, getCurrentUser, 
-  fetchContacts, saveMessage, fetchMessages 
+  fetchContacts, saveMessage, listenForMessages 
 };
