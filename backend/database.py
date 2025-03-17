@@ -4,7 +4,6 @@ import os
 import json
 import bcrypt
 
-
 print(f"🔥 FIREBASE_CONFIG exists: {bool(os.getenv('FIREBASE_CONFIG'))}")
 print(f"🔥 SECRET_KEY exists: {bool(os.getenv('SECRET_KEY'))}")
 
@@ -79,4 +78,3 @@ def save_message(sender_email, receiver_email, message):
     
     except Exception as e:
         return {"status": "error", "message": f"Message saving failed: {e}"}
-
