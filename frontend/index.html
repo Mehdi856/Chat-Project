@@ -6,7 +6,6 @@
   <title>Web Chat</title>
   <link rel="stylesheet" href="styles.css">
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body>
   <div class="app-container">
@@ -44,11 +43,12 @@
         <!-- Active chat interface (hidden initially) -->
         <div id="active-chat" style="display: none; flex-direction: column; height: 100%;">
           <div class="chat-header">
-            <div class="back-button" id="back-button">←</div>
+            <div class="back-button" id="back-button">🡰</div>
             <div class="chat-contact">
               <div class="contact-avatar" id="chat-avatar"></div>
               <div class="contact-info">
                 <div class="contact-name" id="chat-name"></div>
+                <span class="typing-indicator" id="typing-indicator"></span>
               </div>
             </div>
             <div class="chat-actions">
