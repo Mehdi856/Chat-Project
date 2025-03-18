@@ -6,7 +6,9 @@ import bcrypt
 
 # ✅ Load Firebase credentials from environment variable
 firebase_config = os.getenv("FIREBASE_CONFIG")
-
+# ✅ Check if environment variables exist
+print(f"🔥 FIREBASE_CONFIG exists: {bool(os.getenv('FIREBASE_CONFIG'))}")
+print(f"🔥 SECRET_KEY exists: {bool(os.getenv('SECRET_KEY'))}")
 if firebase_config:
     try:
         cred_dict = json.loads(firebase_config)

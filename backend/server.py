@@ -6,7 +6,8 @@ from encryption import encrypt_message, decrypt_message
 app = FastAPI()
 db = firestore.client()
 clients = {}  # Active WebSocket connections
-
+print(f"🔥 FIREBASE_CONFIG exists: {bool(os.getenv('FIREBASE_CONFIG'))}")
+print(f"🔥 SECRET_KEY exists: {bool(os.getenv('SECRET_KEY'))}")
 # 🔥 Register User Endpoint
 @app.post("/register")
 async def register_user(user: dict):
