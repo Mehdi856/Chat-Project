@@ -697,6 +697,51 @@ button:hover {
   border-left: 4px solid #6e8efb;
 }
 
+.contact-name-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.message-date {
+  font-size: 0.75rem;
+  color: #888;
+  white-space: nowrap;
+  margin-left: 4px;
+}
+
+/* Add this to your existing CSS (styles.css) */
+
+.unread-badge {
+  position: absolute;
+  right: 22px;
+  top: 69%;
+  transform: translateY(-50%);
+  background-color: #6e8efb;
+  color: white;
+  border-radius: 50%;
+  min-width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: bold;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Optional: Add subtle animation when new messages arrive */
+@keyframes pulse {
+  0% { transform: translateY(-50%) scale(1); }
+  50% { transform: translateY(-50%) scale(1.1); }
+  100% { transform: translateY(-50%) scale(1); }
+}
+
+.unread-badge.new {
+  animation: pulse 0.5s ease;
+}
+
 .contact-avatar {
   width: 45px;
   height: 45px;
@@ -982,7 +1027,8 @@ button:hover {
 #user-info {
   margin-right: 15px;
   color: white;
-  font-size: 14px;
+  font-size: 17px;
+  font-weight: bold;
 }
 
 .message-group {
@@ -1180,5 +1226,160 @@ button:hover {
     margin-right: 8px;
   }
 }
+/* Add these styles to your existing CSS */
 
+/* Typing indicator */
+.typing-indicator {
+  display: none;
+  font-size: 12px;
+  color: #6e8efb;
+  font-style: italic;
+  margin-left: 5px;
+  animation: blink 1s infinite;
+}
+
+@keyframes blink {
+  0% { opacity: 0.5; }
+  50% { opacity: 1; }
+  100% { opacity: 0.5; }
+}
+
+/* Message metadata container */
+.message-metadata {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  font-size: 11px;
+  color: #888;
+  margin-top: 8px;
+  padding: 0 1px;
+}
+
+.message.received .message-metadata {
+  justify-content: flex-start;
+}
+
+/* Message timestamp */
+.message-timestamp {
+  font-size: 13px;
+  color: #999;
+  margin-right: 2px;
+  font-weight: bold;
+}
+
+/* Message status indicators */
+.message-status {
+  font-size: 10px;
+  margin-left: 7px;
+}
+
+.message-status.delivered {
+  color: #a0a0a0;
+}
+
+.message-status.seen {
+  color: #6e8efb;
+}
+
+.message-status.seen::after {
+  content: "✓✓";
+  font-size: 11px;
+  margin-left: 2px;
+}
+
+.message-status.delivered::after {
+  content: "✓";
+  font-size: 11px;
+  margin-left: 2px;
+}
+
+/* Modify the chat header to accommodate typing indicator */
+.chat-header .contact-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-header .contact-name {
+  margin-bottom: 0;
+  line-height: 1.2;
+}
+
+/* Styling for message groups */
+.message-group {
+  margin-bottom: 12px;
+}
+
+.message-group .message {
+  margin-bottom: 2px;
+}
+
+.message-group .message:last-child {
+  margin-bottom: 0;
+}
+
+/* Improve the message appearance */
+.message-content {
+  padding: 10px 14px;
+  line-height: 1.4;
+  border-radius: 18px;
+}
+
+/* Fix existing message time styles */
+.message-time {
+  font-size: 10px;
+  color: #999;
+}
+
+.message-status {
+  margin-left: 4px;
+  font-size: 0.8em;
+}
+
+.message-status .fa-check {
+  color: #8a8a8a; /* Gray for delivered */
+}
+
+.message-status .fa-check-double {
+  color: #4fc3f7; /* Blue for seen */
+}
+
+/* Make sure the send button has appropriate icon */
+#send-btn {
+  background-color: #128c7e;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Fixing send button alignment in message input container */
+.message-input-container {
+  display: flex;
+  align-items: center;
+  padding: 10px;
+  border-top: 1px solid #e0e0e0;
+  background-color: white;
+}
+
+#message-input {
+  flex: 1;
+  padding: 10px 15px;
+  border: 1px solid #ddd;
+  border-radius: 20px;
+  outline: none;
+  margin-right: 10px;
+}
+
+/* Style for typing indicator */
+.typing-indicator {
+  font-size: 0.8em;
+  color: #666;
+  font-style: italic;
+  display: none;
+}
 
