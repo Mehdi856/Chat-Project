@@ -2,7 +2,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Depe
 from firebase_admin import auth, firestore
 from auth import verify_token
 from encryption import encrypt_message, decrypt_message
-
+import os  # ✅ FIXED: We forgot to import this!
 app = FastAPI()
 db = firestore.client()
 clients = {}  # Active WebSocket connections
