@@ -84,18 +84,22 @@ async def websocket_endpoint(websocket: WebSocket):
     try:
         while True:
             encrypted_message = await websocket.receive_text()
-            message = decrypt_message(encrypted_message)
-            
+            message = decrypt_message(encrypted_message)  # 🔥 Decrypt message
+
+            # 🔥 Encrypt before storing in Firestore
+            encrypted_text = encrypt_message(message)
+
             message_data = {
                 "sender": email,
-                "text": message
+                "text": encrypted_text,  # ✅ Store encrypted text
+                "timestamp": firestore.SERVER_TIMESTAMP  # ✅ Store timestamp
             }
-            db.collection("messages").add(message_data)  # Save to Firestore
+            db.collection("messages").add(message_data)  # ✅ Store in Firestore
             
-            # Send message to all connected clients
+            # 🔥 Broadcast message to all connected clients
             for client_email, client_ws in clients.items():
                 if client_ws != websocket:
-                    await client_ws.send_text(encrypt_message(f"{email}: {message}"))
+                    await client_ws.send_text(encrypt_message(f"{email}: {message}"))  # ✅ Send encrypted message
 
     except WebSocketDisconnect:
         del clients[email]
@@ -105,5 +109,17 @@ async def websocket_endpoint(websocket: WebSocket):
 async def get_messages():
     """Retrieve chat history from Firestore"""
     messages_ref = db.collection("messages").stream()
-    messages = [{"sender": msg.get("sender"), "text": msg.get("text")} for msg in messages_ref]
+    
+    # 🔥 Decrypt messages before sending to frontend
+    messages = []
+    for msg in messages_ref:
+        data = msg.to_dict()
+        decrypted_text = decrypt_message(data["text"])  # ✅ Decrypt before returning
+        messages.append({
+            "sender": data["sender"],
+            "text": decrypted_text,
+            "timestamp": data.get("timestamp")
+        })
+
     return messages
+
