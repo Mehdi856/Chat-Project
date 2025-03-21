@@ -21,6 +21,7 @@ const messageInput = document.getElementById('message-input');
 const sendBtn = document.getElementById('send-btn');
 const backButton = document.getElementById('back-button');
 const userInfoSpan = document.getElementById('user-info');
+const userAvatar = document.getElementById('user-avatar');
 const logoutBtn = document.getElementById('logout-btn');
 const chatName = document.getElementById('chat-name');
 
@@ -69,6 +70,11 @@ async function initChat() {
     return;
   }
   
+  // Update user avatar with initial and color
+  const initial = getInitials(currentUser.username || currentUser.email);
+  userAvatar.textContent = initial;
+  userAvatar.style.backgroundColor = getUserColor(currentUser.uid || currentUser.email);
+  
   // Display user info
   userInfoSpan.textContent = currentUser.username || currentUser.email;
   
@@ -83,6 +89,28 @@ async function initChat() {
   
   // Start listening for messages from all contacts
   listenForAllMessages();
+}
+
+/**
+ * Generate a unique color based on user ID or email
+ */
+function getUserColor(identifier) {
+  const colors = [
+    '#FF5722', '#E91E63', '#9C27B0', '#673AB7', 
+    '#3F51B5', '#2196F3', '#03A9F4', '#00BCD4', 
+    '#009688', '#4CAF50', '#8BC34A', '#CDDC39',
+    '#FFC107', '#FF9800', '#795548', '#607D8B'
+  ];
+  
+  // Simple hash function to generate consistent colors
+  let hash = 0;
+  for (let i = 0; i < identifier.length; i++) {
+    hash = ((hash << 5) - hash) + identifier.charCodeAt(i);
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  
+  const index = Math.abs(hash) % colors.length;
+  return colors[index];
 }
 
 /**
@@ -315,6 +343,29 @@ function formatDateForContacts(date) {
 }
 
 /**
+ * Format date for chat day separators
+ */
+function formatDateForChat(date) {
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  
+  if (isSameDay(date, today)) {
+    return 'Today';
+  } else if (isSameDay(date, yesterday)) {
+    return 'Yesterday';
+  } else {
+    // Format as Day, Month DD, YYYY
+    return date.toLocaleDateString('en-US', { 
+      weekday: 'long', 
+      month: 'long', 
+      day: 'numeric',
+      year: 'numeric'
+    });
+  }
+}
+
+/**
  * Check if two dates are the same day
  */
 function isSameDay(date1, date2) {
@@ -342,6 +393,9 @@ function renderContacts(contactsToRender) {
     // Get initials for avatar
     const initials = getInitials(contact.username || contact.email);
     
+    // Get unique color for this contact
+    const backgroundColor = getUserColor(contact.uid || contact.email);
+    
     // Get last message preview text
     let previewText = 'Click to start chatting';
     let dateText = '';
@@ -366,7 +420,7 @@ function renderContacts(contactsToRender) {
     }
     
     contactElement.innerHTML = `
-      <div class="contact-avatar">${initials}</div>
+      <div class="contact-avatar" style="background-color: ${backgroundColor}">${initials}</div>
       <div class="contact-info">
         <div class="contact-name-row">
           <div class="contact-name">${contact.username || contact.email}</div>
@@ -431,8 +485,13 @@ function startChat(contact) {
   noChatSelected.style.display = 'none';
   activeChat.style.display = 'flex';
   
+  // Get unique color for chat avatar
+  const backgroundColor = getUserColor(contact.uid || contact.email);
+  
   // Update chat header
-  document.getElementById('chat-avatar').textContent = getInitials(currentChat.username);
+  const chatAvatar = document.getElementById('chat-avatar');
+  chatAvatar.textContent = getInitials(currentChat.username);
+  chatAvatar.style.backgroundColor = backgroundColor;
   document.getElementById('chat-name').textContent = currentChat.username;
   
   // Add typing indicator span
@@ -504,7 +563,23 @@ function renderMessages(messages) {
     return found;
   }, -1);
 
+  // Track the current date to know when to insert date separators
+  let currentDateStr = '';
+
   messages.forEach((msg, index) => {
+    const messageDate = new Date(msg.timestamp);
+    const messageDateStr = messageDate.toDateString();
+    
+    // If this message is from a different day than the previous one, add a date separator
+    if (messageDateStr !== currentDateStr) {
+      currentDateStr = messageDateStr;
+      
+      const dateSeparator = document.createElement('div');
+      dateSeparator.className = 'date-separator';
+      dateSeparator.innerHTML = `<span>${formatDateForChat(messageDate)}</span>`;
+      messagesContainer.appendChild(dateSeparator);
+    }
+    
     const messageElement = document.createElement('div');
     messageElement.classList.add('message');
 
