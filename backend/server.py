@@ -129,16 +129,17 @@ async def get_messages():
     """Retrieve chat history from Firestore"""
     messages_ref = db.collection("messages").stream()
     
-    # 🔥 Decrypt messages before sending to frontend
+    # Decrypt messages before sending to frontend
     messages = []
     for msg in messages_ref:
         data = msg.to_dict()
+        # Use the correct field name "message"
         decrypted_text = decrypt_message(data["message"])  # ✅ Decrypt before returning
         messages.append({
             "sender": data["sender"],
-            "text": decrypted_text,
-            "timestamp": data.get("timestamp")
+            "receiver": data["receiver"],  # Include receiver if needed
+            "text": decrypted_text,  # Use "text" or another consistent field name
+            "timestamp": data.get("timestamp")  # Use .get() to avoid KeyError if field is missing
         })
 
     return messages
-
