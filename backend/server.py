@@ -1,9 +1,11 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Depends
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+import firebase_admin
 from firebase_admin import auth, firestore, credentials
 from encryption import encrypt_message, decrypt_message
 from websocket_manager import WebSocketManager
 import os
+import json
 
 app = FastAPI()
 
@@ -16,7 +18,21 @@ app.add_middleware(
     allow_headers=["*"],  
 )
 
-# ✅ Initialize Firestore
+# ✅ Initialize Firebase Admin SDK
+firebase_config_json = os.getenv("FIREBASE_CONFIG")
+if not firebase_config_json:
+    raise ValueError("🔥 ERROR: FIREBASE_CONFIG environment variable is missing!")
+
+try:
+    firebase_config = json.loads(firebase_config_json)
+except json.JSONDecodeError:
+    raise ValueError("🔥 ERROR: Invalid JSON in FIREBASE_CONFIG environment variable!")
+
+if not firebase_admin._apps:  # Only initialize if not already initialized
+    cred = credentials.Certificate(firebase_config)
+    firebase_admin.initialize_app(cred)
+
+# ✅ Initialize Firestore (After Firebase is initialized)
 db = firestore.client()
 
 # ✅ WebSocket Manager
@@ -33,7 +49,7 @@ def verify_token(token: str):
         decoded_token = auth.verify_id_token(token)
         return decoded_token["uid"]
     except Exception as e:
-        print(f"Token verification failed: {e}")
+        print(f"❌ Token verification failed: {e}")
         return None
 
 # 🔥 WebSocket for Real-time Chat
@@ -59,7 +75,7 @@ async def websocket_endpoint(websocket: WebSocket):
     try:
         while True:
             data = await websocket.receive_json()
-            message_type = "private"
+            message_type = data.get("type", "private")  # Default to private chat
             plaintext_message = data.get("message")
 
             if message_type == "private":
@@ -107,6 +123,8 @@ async def websocket_endpoint(websocket: WebSocket):
 
     except WebSocketDisconnect:
         await websocket_manager.disconnect(sender_uid)
+    except Exception as e:
+        print(f"❌ WebSocket Error: {e}")
 
 # 🔥 Fetch Messages (REST API)
 @app.get("/messages/{user_id}")
