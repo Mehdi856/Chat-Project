@@ -1,130 +1,86 @@
-import { registerUser, loginUser, logoutUser, isAuthenticated } from "./firebase.js";
-
-// Wait for DOM to load
-document.addEventListener("DOMContentLoaded", function() {
-  // Check if we're on the login page
-  const container = document.getElementById("container");
-  if (container) {
-    setupLoginPage();
-  }
-  
-  // Check if we're on the chat page
-  const logoutBtn = document.getElementById("logout-btn");
-  if (logoutBtn) {
-    logoutBtn.addEventListener("click", async function() {
-      await logoutUser();
-    });
-  }
-  
-  // Auto-redirect if authenticated but on login page
-  if (isAuthenticated() && document.getElementById("container")) {
-    window.location.href = "index.html";
-  }
-});
+const BACKEND_URL = "https://chat-project-2.onrender.com";
 
 /**
- * Setup login and signup forms
+ * Register a new user (Firebase)
  */
-function setupLoginPage() {
-  const signUpButton = document.getElementById("signUp");
-  const signInButton = document.getElementById("signIn");
-  const signUpBtn = document.getElementById("signUpBtn");
-  const signInBtn = document.getElementById("signInBtn");
-  const container = document.getElementById("container");
-  
-  // Handle form switching
-  if (signUpButton) {
-    signUpButton.addEventListener("click", function(e) {
-      e.preventDefault();
-      container.classList.add("right-panel-active");
-    });
-  }
-  
-  if (signInButton) {
-    signInButton.addEventListener("click", function(e) {
-      e.preventDefault();
-      container.classList.remove("right-panel-active");
-    });
-  }
-  
-  if (signUpBtn) {
-    signUpBtn.addEventListener("click", function(e) {
-      e.preventDefault();
-      container.classList.add("right-panel-active");
-    });
-  }
-  
-  if (signInBtn) {
-    signInBtn.addEventListener("click", function(e) {
-      e.preventDefault();
-      container.classList.remove("right-panel-active");
-    });
-  }
-  
-  // Handle sign in form submission
-  const signinForm = document.getElementById("signin-form");
-  if (signinForm) {
-    signinForm.addEventListener("submit", async function(e) {
-      e.preventDefault();
-      const email = document.getElementById("signin-email").value;
-      const password = document.getElementById("signin-password").value;
-      
-      const result = await loginUser(email, password);
-      if (result.error) {
-        showMessage(result.error, "error");
-      }
-    });
-  }
-  
-  // Handle sign up form submission
-  const signupForm = document.getElementById("signup-form");
-  if (signupForm) {
-    signupForm.addEventListener("submit", async function(e) {
-      e.preventDefault();
-      const name = document.getElementById("signup-name").value;
-      const email = document.getElementById("signup-email").value;
-      const password = document.getElementById("signup-password").value;
-      
-      // Validate password
-      if (password.length < 6) {
-        showMessage("Password must be at least 6 characters long", "error");
-        return;
-      }
-      
-      const result = await registerUser(email, password, name);
-      if (result.error) {
-        showMessage(result.error, "error");
-      }
-    });
+async function registerUser(email, password, username) {
+  try {
+    const userCredential = await firebase.auth().createUserWithEmailAndPassword(email, password);
+    const user = userCredential.user;
+
+    // ✅ Update display name
+    await user.updateProfile({ displayName: username });
+
+    // ✅ Get Firebase token
+    const token = await user.getIdToken();
+
+    // ✅ Save user data
+    localStorage.setItem("user", JSON.stringify({ 
+      uid: user.uid, 
+      email: user.email, 
+      username, 
+      token 
+    }));
+
+    window.location.href = "index.html"; // Redirect after registration
+    return { success: true, message: "Registration successful" };
+  } catch (error) {
+    console.error("Registration failed:", error);
+    return { success: false, error: error.message };
   }
 }
 
 /**
- * Show popup message
+ * Log in a user (Firebase)
  */
-function showMessage(message, type = "info") {
-  let messageContainer = document.getElementById("message-container");
-  
-  if (!messageContainer) {
-    messageContainer = document.createElement("div");
-    messageContainer.id = "message-container";
-    messageContainer.className = "message-container";
-    document.body.appendChild(messageContainer);
+async function loginUser(email, password) {
+  try {
+    const userCredential = await firebase.auth().signInWithEmailAndPassword(email, password);
+    const user = userCredential.user;
+
+    // ✅ Get Firebase token
+    const token = await user.getIdToken();
+
+    // ✅ Save user data
+    localStorage.setItem("user", JSON.stringify({ 
+      uid: user.uid, 
+      email: user.email, 
+      username: user.displayName || "Unknown", 
+      token 
+    }));
+
+    window.location.href = "index.html"; // Redirect after login
+    return { success: true, message: "Login successful" };
+  } catch (error) {
+    console.error("Login failed:", error);
+    return { success: false, error: error.message };
   }
-  
-  const messageElement = document.createElement("div");
-  messageElement.className = `message ${type}`;
-  messageElement.textContent = message;
-  
-  messageContainer.appendChild(messageElement);
-  
-  setTimeout(() => {
-    messageElement.classList.add("fade-out");
-    setTimeout(() => {
-      messageElement.remove();
-    }, 300);
-  }, 3000);
 }
 
-// Export showMessage function
-export { showMessage };
+/**
+ * Log out the current user
+ */
+function logoutUser() {
+  firebase.auth().signOut().then(() => {
+    localStorage.removeItem("user");
+    window.location.href = "login.html"; // Redirect after logout
+  });
+}
+
+/**
+ * Check if a user is authenticated
+ */
+function isAuthenticated() {
+  const user = localStorage.getItem("user");
+  return user !== null && JSON.parse(user).token;
+}
+
+/**
+ * Get current user data
+ */
+function getCurrentUser() {
+  const userStr = localStorage.getItem("user");
+  return userStr ? JSON.parse(userStr) : null;
+}
+
+export { registerUser, loginUser, logoutUser, isAuthenticated, getCurrentUser };

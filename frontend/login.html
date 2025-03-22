@@ -13,15 +13,12 @@
     <div class="form-container sign-in-container">
       <form id="signin-form">
         <h1>Sign In</h1>
-        <div class="social-container">
-          <a href="#" class="social"><i class="fab fa-google-plus-g"></i>G</a>
-        </div>
         <span class="divider"><span>or use your account</span></span>
         <input type="email" id="signin-email" placeholder="Email" required />
         <input type="password" id="signin-password" placeholder="Password" required />
-        <a href="#" class="forgot-password">Forgot your password?</a>
         <button type="submit">Sign In</button>
         <p class="toggle-form">Don't have an account? <a href="#" id="signUp">Sign Up</a></p>
+        <p id="signin-error" class="error-message"></p> <!-- Error message display -->
       </form>
     </div>
     
@@ -29,15 +26,13 @@
     <div class="form-container sign-up-container">
       <form id="signup-form">
         <h1>Create Account</h1>
-        <div class="social-container">
-          <a href="#" class="social"><i class="fab fa-google-plus-g"></i>G</a>
-        </div>
         <span class="divider"><span>or use your email</span></span>
         <input type="text" id="signup-name" placeholder="Name" required />
         <input type="email" id="signup-email" placeholder="Email" required />
         <input type="password" id="signup-password" placeholder="Password" required />
         <button type="submit">Sign Up</button>
         <p class="toggle-form">Already have an account? <a href="#" id="signIn">Sign In</a></p>
+        <p id="signup-error" class="error-message"></p> <!-- Error message display -->
       </form>
     </div>
     
@@ -46,15 +41,67 @@
       <div class="welcome-panel">
         <h1>Welcome to WebChat</h1>
         <p>Connect with friends and colleagues in realtime. Start chatting now</p>
-        <div class="credits">
-          <span>Designed by <a href="https://github.com/Thabet1thabet1" target="_blank">Thabet1thabet1</a></span>
-        </div>
       </div>
     </div>
   </div>
 
-  <!-- Import Firebase SDK -->
-  <script type="module" src="firebase.js"></script>
-  <script type="module" src="auth.js"></script>
+  <!-- Import Auth Script -->
+  <script type="module">
+    import { registerUser, loginUser } from "./auth.js";
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const signinForm = document.getElementById("signin-form");
+      const signupForm = document.getElementById("signup-form");
+
+      // ✅ Login form submission
+      if (signinForm) {
+        signinForm.addEventListener("submit", async (event) => {
+          event.preventDefault();
+
+          const email = document.getElementById("signin-email").value.trim();
+          const password = document.getElementById("signin-password").value.trim();
+          const errorMsg = document.getElementById("signin-error");
+
+          errorMsg.textContent = ""; // Clear previous errors
+
+          if (!email || !password) {
+            errorMsg.textContent = "❌ Email and password are required!";
+            return;
+          }
+
+          const result = await loginUser(email, password);
+
+          if (!result.success) {
+            errorMsg.textContent = `❌ ${result.error}`;
+          }
+        });
+      }
+
+      // ✅ Signup form submission
+      if (signupForm) {
+        signupForm.addEventListener("submit", async (event) => {
+          event.preventDefault();
+
+          const username = document.getElementById("signup-name").value.trim();
+          const email = document.getElementById("signup-email").value.trim();
+          const password = document.getElementById("signup-password").value.trim();
+          const errorMsg = document.getElementById("signup-error");
+
+          errorMsg.textContent = ""; // Clear previous errors
+
+          if (!username || !email || !password) {
+            errorMsg.textContent = "❌ All fields are required!";
+            return;
+          }
+
+          const result = await registerUser(email, password, username);
+
+          if (!result.success) {
+            errorMsg.textContent = `❌ ${result.error}`;
+          }
+        });
+      }
+    });
+  </script>
 </body>
 </html>
