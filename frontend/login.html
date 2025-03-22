@@ -4,8 +4,15 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Web Chat Login</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="styles.css">
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    /* Adding invalid input styling directly in the HTML */
+    input.invalid {
+      border-left: 4px solid #f44336;
+    }
+  </style>
 </head>
 <body>
   <div class="container" id="container">
@@ -13,12 +20,21 @@
     <div class="form-container sign-in-container">
       <form id="signin-form">
         <h1>Sign In</h1>
+        <div class="social-container">
+          <a href="#" class="social"><i class="fab fa-google"></i></a>
+        </div>
         <span class="divider"><span>or use your account</span></span>
-        <input type="email" id="signin-email" placeholder="Email" required />
-        <input type="password" id="signin-password" placeholder="Password" required />
+        <div class="input-container">
+          <input type="email" id="signin-email" placeholder="Email" required />
+          <span class="validation-indicator"></span>
+        </div>
+        <div class="input-container">
+          <input type="password" id="signin-password" placeholder="Password" required />
+          <span class="validation-indicator"></span>
+        </div>
         <button type="submit">Sign In</button>
         <p class="toggle-form">Don't have an account? <a href="#" id="signUp">Sign Up</a></p>
-        <p id="signin-error" class="error-message"></p> <!-- Error message display -->
+        <p id="signin-error" class="error-message"></p>
       </form>
     </div>
     
@@ -26,13 +42,25 @@
     <div class="form-container sign-up-container">
       <form id="signup-form">
         <h1>Create Account</h1>
+        <div class="social-container">
+          <a href="#" class="social"><i class="fab fa-google"></i></a>
+        </div>
         <span class="divider"><span>or use your email</span></span>
-        <input type="text" id="signup-name" placeholder="Name" required />
-        <input type="email" id="signup-email" placeholder="Email" required />
-        <input type="password" id="signup-password" placeholder="Password" required />
+        <div class="input-container">
+          <input type="text" id="signup-name" placeholder="Name" required />
+          <span class="validation-indicator"></span>
+        </div>
+        <div class="input-container">
+          <input type="email" id="signup-email" placeholder="Email" required />
+          <span class="validation-indicator"></span>
+        </div>
+        <div class="input-container">
+          <input type="password" id="signup-password" placeholder="Password" required />
+          <span class="validation-indicator"></span>
+        </div>
         <button type="submit">Sign Up</button>
         <p class="toggle-form">Already have an account? <a href="#" id="signIn">Sign In</a></p>
-        <p id="signup-error" class="error-message"></p> <!-- Error message display -->
+        <p id="signup-error" class="error-message"></p>
       </form>
     </div>
     
@@ -41,6 +69,9 @@
       <div class="welcome-panel">
         <h1>Welcome to WebChat</h1>
         <p>Connect with friends and colleagues in realtime. Start chatting now</p>
+        <div class="credits">
+          <span>Designed by <a href="https://github.com/Thabet1thabet1" target="_blank">Thabet1thabet1</a></span>
+        </div>
       </div>
     </div>
   </div>
@@ -50,6 +81,50 @@
     import { registerUser, loginUser } from "./auth.js";
 
     document.addEventListener("DOMContentLoaded", () => {
+      // Panel Switching Logic
+      const signUpButton = document.getElementById('signUp');
+      const signInButton = document.getElementById('signIn');
+      const container = document.getElementById('container');
+
+      signUpButton.addEventListener('click', () => {
+        container.classList.add('right-panel-active');
+      });
+
+      signInButton.addEventListener('click', () => {
+        container.classList.remove('right-panel-active');
+      });
+      
+      // Get all input fields
+      const inputFields = document.querySelectorAll('input');
+      
+      // Add event listeners to each input field
+      inputFields.forEach(input => {
+        input.addEventListener('input', function() {
+          // Check if the input is valid
+          if (this.validity.valid && this.value.length > 0) {
+            this.classList.add('valid');
+            this.classList.remove('invalid');
+          } else {
+            this.classList.remove('valid');
+            this.classList.add('invalid');
+          }
+        });
+      });
+      
+      // Add special validation for password
+      const passwordInputs = document.querySelectorAll('input[type="password"]');
+      passwordInputs.forEach(input => {
+        input.addEventListener('input', function() {
+          if (this.value.length >= 6) {
+            this.classList.add('valid');
+            this.classList.remove('invalid');
+          } else {
+            this.classList.remove('valid');
+            this.classList.add('invalid');
+          }
+        });
+      });
+
       const signinForm = document.getElementById("signin-form");
       const signupForm = document.getElementById("signup-form");
 
