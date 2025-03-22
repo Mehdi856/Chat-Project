@@ -2,63 +2,58 @@ import firebase_admin
 from firebase_admin import credentials, auth, firestore
 import os
 import json
-import bcrypt
 
 # ✅ Load Firebase credentials from environment variable
 firebase_config = os.getenv("FIREBASE_CONFIG")
-# ✅ Check if environment variables exist
-print(f"🔥 FIREBASE_CONFIG exists: {bool(os.getenv('FIREBASE_CONFIG'))}")
-print(f"🔥 SECRET_KEY exists: {bool(os.getenv('SECRET_KEY'))}")
-if firebase_config:
-    try:
-        cred_dict = json.loads(firebase_config)
-        cred = credentials.Certificate(cred_dict)
-        firebase_admin.initialize_app(cred)
-        print("🔥 Firebase Auth Initialized!")
-    except Exception as e:
-        print(f"❌ Firebase Initialization Failed: {e}")
-else:
-    print("❌ FIREBASE_CONFIG environment variable is missing!")
+
+if not firebase_config:
+    raise RuntimeError("❌ FIREBASE_CONFIG environment variable is missing!")
+
+try:
+    cred_dict = json.loads(firebase_config)
+    cred = credentials.Certificate(cred_dict)
+    firebase_admin.initialize_app(cred)
+    print("🔥 Firebase Auth Initialized!")
+except Exception as e:
+    raise RuntimeError(f"❌ Firebase Initialization Failed: {e}")
 
 # ✅ Firestore Connection
 db = firestore.client()
 
 def verify_token(token: str):
-    """Verify Firebase authentication token."""
+    """Verify Firebase authentication token and return user UID."""
     try:
         decoded_token = auth.verify_id_token(token)
-        return decoded_token["email"]
+        return decoded_token["uid"]  # 🔥 Return UID instead of email
     except Exception:
         return None  # Invalid token
 
-# ✅ Function to create a user (hashed password)
 def create_user(email, username, password):
-    user_ref = db.collection("users").document(email)
-    
-    if user_ref.get().exists:
-        return {"status": "error", "message": "User already exists"}
+    """Register a new user using Firebase Authentication."""
+    try:
+        user_record = auth.create_user(
+            email=email,
+            password=password,
+            display_name=username
+        )
+        db.collection("users").document(user_record.uid).set({
+            "email": email,
+            "username": username,
+            "created_at": firestore.SERVER_TIMESTAMP
+        })
+        return {"status": "success", "message": "User created successfully!", "uid": user_record.uid}
+    except Exception as e:
+        return {"status": "error", "message": f"User creation failed: {e}"}
 
-    hashed_password = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
-    
-    user_ref.set({
-        "email": email,
-        "username": username,
-        "password": hashed_password,
-        "created_at": firestore.SERVER_TIMESTAMP
-    })
-    return {"status": "success", "message": "User created successfully!"}
-
-# ✅ Function to log in a user
 def login_user(email, password):
-    user_ref = db.collection("users").document(email).get()
+    """Login is handled by Firebase, but we fetch user info."""
+    try:
+        user_record = auth.get_user_by_email(email)
+        user_data = db.collection("users").document(user_record.uid).get()
 
-    if user_ref.exists:
-        user_data = user_ref.to_dict()
-        stored_password = user_data["password"].encode()
+        if not user_data.exists:
+            return {"status": "error", "message": "User not found in Firestore."}
 
-        if bcrypt.checkpw(password.encode(), stored_password):
-            return {"status": "success", "message": "Login successful", "username": user_data["username"]}
-        else:
-            return {"status": "error", "message": "Incorrect password"}
-    else:
-        return {"status": "error", "message": "User not found"}
+        return {"status": "success", "message": "Login successful!", "uid": user_record.uid, "username": user_data.to_dict()["username"]}
+    except Exception as e:
+        return {"status": "error", "message": f"Login failed: {e}"}
