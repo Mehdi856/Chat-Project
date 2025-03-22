@@ -56,19 +56,37 @@ async def register_user(user: dict):
 # 🔥 Login User (REST API)
 @app.post("/login")
 async def login_user(user: dict):
-    """Verifies credentials & returns a Firebase token."""
+    """Verifies email & password, then returns a Firebase token."""
     email = user.get("email")
-    if not email:
-        raise HTTPException(status_code=400, detail="Email is required.")
+    password = user.get("password")  # Get the password from the request
+
+    if not email or not password:
+        raise HTTPException(status_code=400, detail="Email and password are required.")
 
     user_data = get_user_by_email(email)
     if not user_data:
         raise HTTPException(status_code=401, detail="User not found.")
 
     try:
-        firebase_user = auth.get_user_by_email(email)
-        custom_token = auth.create_custom_token(firebase_user.uid).decode()
-        return {"status": "success", "message": "Login successful!", "token": custom_token}
+        # 🔥 Authenticate the user with Firebase
+        user_cred = auth.sign_in_with_email_and_password(email, password)
+
+        # Fetch user details from Firestore
+        user_doc = db.collection("users").document(user_cred["localId"]).get()
+        if not user_doc.exists:
+            raise HTTPException(status_code=401, detail="User record not found.")
+
+        user_info = user_doc.to_dict()
+
+        # Generate a custom Firebase token
+        custom_token = auth.create_custom_token(user_cred["localId"]).decode()
+
+        return {
+            "status": "success",
+            "message": "Login successful!",
+            "token": custom_token,
+            "username": user_info.get("username", "Unknown")  # Send the username
+        }
     except Exception as e:
         raise HTTPException(status_code=401, detail=f"Login failed: {str(e)}")
 
