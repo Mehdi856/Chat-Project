@@ -133,7 +133,7 @@ async def get_messages():
     messages = []
     for msg in messages_ref:
         data = msg.to_dict()
-        decrypted_text = decrypt_message(data["text"])  # ✅ Decrypt before returning
+        decrypted_text = decrypt_message(data["message"])  # ✅ Decrypt before returning
         messages.append({
             "sender": data["sender"],
             "text": decrypted_text,
