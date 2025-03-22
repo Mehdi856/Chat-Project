@@ -1,4 +1,4 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Depends
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from firebase_admin import auth, firestore
 from auth import verify_token
@@ -27,13 +27,51 @@ websocket_manager = WebSocketManager()
 print(f"🔥 FIREBASE_CONFIG exists: {bool(os.getenv('FIREBASE_CONFIG'))}")
 print(f"🔥 SECRET_KEY exists: {bool(os.getenv('SECRET_KEY'))}")
 
+# 🔥 Register User Endpoint (REST API)
+@app.post("/register")
+async def register_user(user: dict):
+    """Register a new user in Firebase Auth and Firestore."""
+    try:
+        user_record = auth.create_user(
+            email=user["email"],
+            password=user["password"],
+            display_name=user["username"]
+        )
+        db.collection("users").document(user_record.uid).set({
+            "email": user["email"],
+            "username": user["username"],
+            "created_at": firestore.SERVER_TIMESTAMP
+        })
+        custom_token = auth.create_custom_token(user_record.uid)
+        return {"status": "success", "message": "User registered!", "token": custom_token.decode()}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Registration failed: {e}")
+
+# 🔥 Login User Endpoint (REST API)
+@app.post("/login")
+async def login_user(user: dict):
+    """Verify user credentials and return a Firebase ID token."""
+    try:
+        email = user["email"]
+        user_ref = db.collection("users").where("email", "==", email).stream()
+        user_data = next((doc.to_dict() for doc in user_ref), None)
+
+        if not user_data:
+            raise HTTPException(status_code=401, detail="User not found.")
+
+        firebase_user = auth.get_user_by_email(email)
+        custom_token = auth.create_custom_token(firebase_user.uid)
+        return {"status": "success", "message": "Login successful!", "token": custom_token.decode()}
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=f"Login failed: {e}")
+
 # 🔥 WebSocket for Real-time Chat
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     """WebSocket connection for real-time chat."""
     await websocket.accept()
     token = websocket.headers.get("Authorization")  # Expect "Authorization: Bearer <token>"
-    
+
     if not token or not token.startswith("Bearer "):
         await websocket.close()
         return
