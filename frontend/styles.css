@@ -34,12 +34,12 @@ body {
   height: 100%;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
   transition: all 0.6s ease-in-out;
 }
 
 .sign-in-container, .sign-up-container {
-  padding: 100px;
+  padding: 30px 100px; /* Reduced top padding from 100px */
   z-index: 2;
 }
 
@@ -55,6 +55,7 @@ body {
   padding: 40px;
   color: white;
   align-items: center;
+  justify-content: center; /* Keep center alignment for welcome panel */
 }
 
 h1 {
@@ -87,6 +88,7 @@ p {
   color: #6e8efb;
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
   transition: all 0.3s ease;
+  font-size: 18px;
 }
 
 .social-container a:hover {
@@ -94,11 +96,16 @@ p {
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
 }
 
+.input-container {
+  position: relative;
+  width: 100%;
+  margin: 10px 0;
+}
+
 input {
   background-color: #f7f7f7;
   border: none;
   padding: 15px;
-  margin: 10px 0;
   width: 100%;
   border-radius: 10px;
   font-size: 14px;
@@ -116,8 +123,12 @@ input.valid {
   border-left: 4px solid #4CAF50;
 }
 
-input:invalid {
+input.invalid {
   border-left: 4px solid #f44336;
+}
+
+.validation-indicator {
+  display: flex; /* Hide the validation indicators */
 }
 
 button {
@@ -167,6 +178,8 @@ form {
   align-items: center;
   width: 100%;
   max-width: 320px;
+  position: relative;
+  height: 100%;
 }
 
 .forgot-password {
@@ -203,14 +216,13 @@ form {
 }
 
 .toggle-form {
-  margin-top: 45px;
+  position: absolute;
+  bottom: 20px; /* Moved lower from 38px */
+  margin-top: 0;
+  width: 100%;
+  text-align: center;
   font-size: 14px;
   color: #666;
-}
-
-.toggle-form.sign-up {
-  margin-top: 80px; 
-  transition: margin-top 0.3s ease;/* Only affects the "Sign up" link */
 }
 
 .toggle-form a {
@@ -264,6 +276,13 @@ form {
   }
 }
 
+.error-message {
+  color: #f44336;
+  font-size: 14px;
+  margin-top: 15px;
+  text-align: center;
+}
+
 .message-container {
   position: fixed;
   top: 20px;
@@ -312,22 +331,22 @@ form {
 .credits {
   width: 100%;
   text-align: center;
-  padding: 20px 0;
-  margin-top: 20px;
-  color: #fff;
+  padding: 10px 0;
+  color: #ffffff;
   font-size: 14px;
   opacity: 0.8;
   position: absolute;
-  bottom: 38px;
+  bottom: 70px;
   left: 0;
   transition: bottom 0.3s ease;
 }
 
 .credits a {
-  color: #fff;
+  color: #e1e8fc;
   text-decoration: none;
   font-weight: 600;
   transition: all 0.3s ease;
+  font-size: 15px;
 }
 
 .credits a:hover {
