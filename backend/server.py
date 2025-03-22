@@ -1,22 +1,20 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from firebase_admin import auth, firestore
-from auth import verify_token
+from firebase_admin import auth, firestore, credentials
 from encryption import encrypt_message, decrypt_message
 from websocket_manager import WebSocketManager
 import os
 
 app = FastAPI()
 
-# ✅ CORS Middleware (Fixed)
+# ✅ CORS Middleware (Allow Frontend)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://frontend-my1hchdv1-fares-projects-d76a0c1b.vercel.app"],  # Allow frontend
+    allow_origins=["https://frontend-2pxdm1sfu-fares-projects-d76a0c1b.vercel.app"],
     allow_credentials=True,
-    allow_methods=["*"],  # Allow all HTTP methods (GET, POST, PUT, etc.)
-    allow_headers=["*"],  # Allow all headers
+    allow_methods=["*"],  
+    allow_headers=["*"],  
 )
-
 
 # ✅ Initialize Firestore
 db = firestore.client()
@@ -28,68 +26,15 @@ websocket_manager = WebSocketManager()
 print(f"🔥 FIREBASE_CONFIG exists: {bool(os.getenv('FIREBASE_CONFIG'))}")
 print(f"🔥 SECRET_KEY exists: {bool(os.getenv('SECRET_KEY'))}")
 
-# ✅ Helper Function: Get User by Email
-def get_user_by_email(email: str):
-    """Fetch user document by email."""
-    user_ref = db.collection("users").where("email", "==", email).stream()
-    return next((doc.to_dict() for doc in user_ref), None)
-
-# 🔥 Register User (REST API)
-@app.post("/register")
-async def register_user(user: dict):
-    """Registers a new user in Firebase Auth & Firestore."""
+# ✅ Token Verification
+def verify_token(token: str):
+    """Verifies Firebase ID token and returns user UID."""
     try:
-        user_record = auth.create_user(
-            email=user["email"],
-            password=user["password"],
-            display_name=user["username"]
-        )
-        db.collection("users").document(user_record.uid).set({
-            "email": user["email"],
-            "username": user["username"],
-            "created_at": firestore.SERVER_TIMESTAMP
-        })
-        custom_token = auth.create_custom_token(user_record.uid).decode()
-        return {"status": "success", "message": "User registered!", "token": custom_token}
+        decoded_token = auth.verify_id_token(token)
+        return decoded_token["uid"]
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Registration failed: {str(e)}")
-
-# 🔥 Login User (REST API)
-@app.post("/login")
-async def login_user(user: dict):
-    """Verifies email & password, then returns a Firebase token."""
-    email = user.get("email")
-    password = user.get("password")  # Get the password from the request
-
-    if not email or not password:
-        raise HTTPException(status_code=400, detail="Email and password are required.")
-
-    user_data = get_user_by_email(email)
-    if not user_data:
-        raise HTTPException(status_code=401, detail="User not found.")
-
-    try:
-        # 🔥 Authenticate the user with Firebase
-        user_cred = auth.sign_in_with_email_and_password(email, password)
-
-        # Fetch user details from Firestore
-        user_doc = db.collection("users").document(user_cred["localId"]).get()
-        if not user_doc.exists:
-            raise HTTPException(status_code=401, detail="User record not found.")
-
-        user_info = user_doc.to_dict()
-
-        # Generate a custom Firebase token
-        custom_token = auth.create_custom_token(user_cred["localId"]).decode()
-
-        return {
-            "status": "success",
-            "message": "Login successful!",
-            "token": custom_token,
-            "username": user_info.get("username", "Unknown")  # Send the username
-        }
-    except Exception as e:
-        raise HTTPException(status_code=401, detail=f"Login failed: {str(e)}")
+        print(f"Token verification failed: {e}")
+        return None
 
 # 🔥 WebSocket for Real-time Chat
 @app.websocket("/ws")
@@ -114,13 +59,13 @@ async def websocket_endpoint(websocket: WebSocket):
     try:
         while True:
             data = await websocket.receive_json()
-            message_type = "private" #data.get("type")  # 'private' or 'group'
+            message_type = "private"
             plaintext_message = data.get("message")
 
             if message_type == "private":
                 receiver_uid = data.get("receiver")
                 if not receiver_uid or not plaintext_message:
-                    continue  # Ignore invalid messages
+                    continue  
 
                 encrypted_message = encrypt_message(plaintext_message)
 
@@ -193,3 +138,5 @@ async def get_messages(user_id: str):
 
     messages.sort(key=lambda x: x["timestamp"], reverse=True)
     return messages
+
+
