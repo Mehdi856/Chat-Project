@@ -1,13 +1,32 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Depends
+from fastapi.middleware.cors import CORSMiddleware
 from firebase_admin import auth, firestore
 from auth import verify_token
 from encryption import encrypt_message, decrypt_message
-import os  # ✅ FIXED: We forgot to import this!
+from websocket_manager import WebSocketManager
+import os
+
 app = FastAPI()
+
+# CORS Middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins (update for production)
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Initialize Firestore
 db = firestore.client()
-clients = {}  # Active WebSocket connections
+
+# Initialize WebSocket Manager
+websocket_manager = WebSocketManager()
+
+# Check environment variables
 print(f"🔥 FIREBASE_CONFIG exists: {bool(os.getenv('FIREBASE_CONFIG'))}")
 print(f"🔥 SECRET_KEY exists: {bool(os.getenv('SECRET_KEY'))}")
+
 # 🔥 Register User Endpoint
 @app.post("/register")
 async def register_user(user: dict):
@@ -80,7 +99,8 @@ async def websocket_endpoint(websocket: WebSocket):
         await websocket.close()
         return
 
-    clients[email] = websocket  # Store connection
+    # Add connection to WebSocket manager
+    await websocket_manager.connect(websocket, email)
 
     try:
         while True:
@@ -98,12 +118,10 @@ async def websocket_endpoint(websocket: WebSocket):
             db.collection("messages").add(message_data)  # ✅ Store in Firestore
             
             # 🔥 Broadcast message to all connected clients
-            for client_email, client_ws in clients.items():
-                if client_ws != websocket:
-                    await client_ws.send_text(encrypt_message(f"{email}: {message}"))  # ✅ Send encrypted message
+            await websocket_manager.broadcast(encrypted_message, sender=email)
 
     except WebSocketDisconnect:
-        del clients[email]
+        await websocket_manager.disconnect(email)
 
 # 🔥 Fetch Messages Endpoint
 @app.get("/messages")
