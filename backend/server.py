@@ -23,123 +23,88 @@ db = firestore.client()
 # Initialize WebSocket Manager
 websocket_manager = WebSocketManager()
 
-# Check environment variables
+# Debugging: Check environment variables
 print(f"🔥 FIREBASE_CONFIG exists: {bool(os.getenv('FIREBASE_CONFIG'))}")
 print(f"🔥 SECRET_KEY exists: {bool(os.getenv('SECRET_KEY'))}")
-
-# 🔥 Register User Endpoint
-@app.post("/register")
-async def register_user(user: dict):
-    """Register a new user in Firebase Auth and Firestore."""
-    try:
-        # Create user in Firebase Authentication
-        user_record = auth.create_user(
-            email=user["email"],
-            password=user["password"],
-            display_name=user["username"]
-        )
-
-        # Store user details in Firestore (excluding password)
-        db.collection("users").document(user_record.uid).set({
-            "email": user["email"],
-            "username": user["username"],
-            "created_at": firestore.SERVER_TIMESTAMP
-        })
-
-        # Generate Firebase auth token
-        custom_token = auth.create_custom_token(user_record.uid)
-        return {"status": "success", "message": "User registered!", "token": custom_token.decode()}
-
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Registration failed: {e}")
-
-# 🔥 Login User Endpoint
-@app.post("/login")
-async def login_user(user: dict):
-    """Verify user credentials and return a Firebase ID token."""
-    try:
-        email = user["email"]
-        password = user["password"]
-
-        # Firebase does NOT support password verification via Admin SDK
-        # Users must authenticate via Firebase Client SDK in frontend
-        user_ref = db.collection("users").where("email", "==", email).stream()
-
-        user_data = None
-        for doc in user_ref:
-            user_data = doc.to_dict()
-            break  # Get first match
-
-        if not user_data:
-            raise HTTPException(status_code=401, detail="User not found.")
-
-        # Generate an authentication token
-        firebase_user = auth.get_user_by_email(email)
-        custom_token = auth.create_custom_token(firebase_user.uid)
-        return {"status": "success", "message": "Login successful!", "token": custom_token.decode()}
-
-    except Exception as e:
-        raise HTTPException(status_code=401, detail=f"Login failed: {e}")
 
 # 🔥 WebSocket for Real-time Chat
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
-    """WebSocket connection for chat messages."""
+    """WebSocket connection for real-time chat."""
     await websocket.accept()
-    headers = websocket.headers
-    token = headers.get("Authorization")  # Expect "Authorization: Bearer <token>"
+    token = websocket.headers.get("Authorization")  # Expect "Authorization: Bearer <token>"
     
     if not token or not token.startswith("Bearer "):
         await websocket.close()
         return
     token = token.split("Bearer ")[1]
 
-    email = verify_token(token)  # Verify Firebase token
-    if not email:
+    sender_uid = verify_token(token)  # Verify Firebase token
+    if not sender_uid:
         await websocket.close()
         return
 
-    # Add connection to WebSocket manager
-    await websocket_manager.connect(websocket, email)
+    await websocket_manager.connect(websocket, sender_uid)
 
     try:
         while True:
-            encrypted_message = await websocket.receive_text()
-            message = decrypt_message(encrypted_message)  # 🔥 Decrypt message
+            data = await websocket.receive_json()
+            receiver_uid = data.get("receiver")
+            plaintext_message = data.get("message")
 
-            # 🔥 Encrypt before storing in Firestore
-            encrypted_text = encrypt_message(message)
+            if not receiver_uid or not plaintext_message:
+                continue  # Skip invalid messages
+
+            encrypted_message = encrypt_message(plaintext_message)
 
             message_data = {
-                "sender": email,
-                "text": encrypted_text,  # ✅ Store encrypted text
-                "timestamp": firestore.SERVER_TIMESTAMP  # ✅ Store timestamp
+                "sender": sender_uid,
+                "receiver": receiver_uid,
+                "message": encrypted_message,
+                "timestamp": firestore.SERVER_TIMESTAMP
             }
             db.collection("messages").add(message_data)  # ✅ Store in Firestore
             
-            # 🔥 Broadcast message to all connected clients
-            await websocket_manager.broadcast(encrypted_message, sender=email)
+            # Send message to recipient if online
+            await websocket_manager.send_message(receiver_uid, encrypted_message)
 
     except WebSocketDisconnect:
-        await websocket_manager.disconnect(email)
+        await websocket_manager.disconnect(sender_uid)
 
 # 🔥 Fetch Messages Endpoint
-@app.get("/messages")
-async def get_messages():
-    """Retrieve chat history from Firestore"""
-    messages_ref = db.collection("messages").stream()
-    
-    # Decrypt messages before sending to frontend
+@app.get("/messages/{user_id}")
+async def get_messages(user_id: str):
+    """Retrieve chat history for a user (both sent & received)."""
+    messages_ref = db.collection("messages").where(
+        "receiver", "==", user_id
+    ).stream()  # Fetch messages received by user
+
+    sent_messages_ref = db.collection("messages").where(
+        "sender", "==", user_id
+    ).stream()  # Fetch messages sent by user
+
     messages = []
     for msg in messages_ref:
         data = msg.to_dict()
-        # Use the correct field name "message"
-        decrypted_text = decrypt_message(data["message"])  # ✅ Decrypt before returning
+        decrypted_text = decrypt_message(data["message"])
         messages.append({
             "sender": data["sender"],
-            "receiver": data["receiver"],  # Include receiver if needed
-            "text": decrypted_text,  # Use "text" or another consistent field name
-            "timestamp": data.get("timestamp")  # Use .get() to avoid KeyError if field is missing
+            "receiver": data["receiver"],
+            "text": decrypted_text,
+            "timestamp": data["timestamp"]
         })
+
+    for msg in sent_messages_ref:
+        data = msg.to_dict()
+        decrypted_text = decrypt_message(data["message"])
+        messages.append({
+            "sender": data["sender"],
+            "receiver": data["receiver"],
+            "text": decrypted_text,
+            "timestamp": data["timestamp"]
+        })
+
+    # Sort messages by timestamp (newest first)
+    messages.sort(key=lambda x: x["timestamp"], reverse=True)
 
     return messages
