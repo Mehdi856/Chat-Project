@@ -8,14 +8,15 @@ import os
 
 app = FastAPI()
 
-# ✅ CORS Middleware
+# ✅ CORS Middleware (Fixed)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Update for production
+    allow_origins=["https://frontend-my1hchdv1-fares-projects-d76a0c1b.vercel.app"],  # Allow frontend
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["*"],  # Allow all HTTP methods (GET, POST, PUT, etc.)
+    allow_headers=["*"],  # Allow all headers
 )
+
 
 # ✅ Initialize Firestore
 db = firestore.client()
