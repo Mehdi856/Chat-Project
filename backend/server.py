@@ -182,6 +182,72 @@ async def websocket_endpoint(websocket: WebSocket):
         print(f"❌ WebSocket Error: {e}")
 
 
+# 🔥 Fetch Contacts
+@app.get("/contacts/{uid}")
+async def get_contacts(uid: str):
+    """Retrieves the contact list of a user."""
+    user_ref = db.collection("users").document(uid).get()
+    
+    if not user_ref.exists:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user_data = user_ref.to_dict()
+    return {"contacts": user_data.get("contacts", [])}
+
+
+# 🔥 Add Contact
+@app.post("/contacts/{uid}")
+async def add_contact(uid: str, contact_data: dict):
+    """Adds a contact to the user's contact list."""
+    contact_uid = contact_data.get("contact_uid")
+    
+    if not contact_uid:
+        raise HTTPException(status_code=400, detail="Missing contact UID")
+
+    user_ref = db.collection("users").document(uid)
+    user_doc = user_ref.get()
+
+    if not user_doc.exists:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user_data = user_doc.to_dict()
+    contacts = user_data.get("contacts", [])
+
+    if contact_uid in contacts:
+        raise HTTPException(status_code=400, detail="Contact already added")
+
+    contacts.append(contact_uid)
+    user_ref.update({"contacts": contacts})
+
+    return {"message": "Contact added successfully"}
+
+
+# 🔥 Remove Contact
+@app.delete("/contacts/{uid}")
+async def remove_contact(uid: str, contact_data: dict):
+    """Removes a contact from the user's contact list."""
+    contact_uid = contact_data.get("contact_uid")
+
+    if not contact_uid:
+        raise HTTPException(status_code=400, detail="Missing contact UID")
+
+    user_ref = db.collection("users").document(uid)
+    user_doc = user_ref.get()
+
+    if not user_doc.exists:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user_data = user_doc.to_dict()
+    contacts = user_data.get("contacts", [])
+
+    if contact_uid not in contacts:
+        raise HTTPException(status_code=400, detail="Contact not found")
+
+    contacts.remove(contact_uid)
+    user_ref.update({"contacts": contacts})
+
+    return {"message": "Contact removed successfully"}
+
 # 🔥 Fetch Messages (REST API)
 @app.get("/messages/{user_id}")
 async def get_messages(user_id: str):
