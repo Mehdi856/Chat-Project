@@ -12,7 +12,7 @@ app = FastAPI()
 # ✅ CORS Middleware (Allow Frontend)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://frontend-fnogba4uw-fares-projects-d76a0c1b.vercel.app"],
+    allow_origins=["https://frontend-avd1zw1un-fares-projects-d76a0c1b.vercel.app"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -130,7 +130,7 @@ async def websocket_endpoint(websocket: WebSocket):
     try:
         while True:
             data = await websocket.receive_json()
-            message_type = data.get("type", "private")
+            message_type = "private"        # data.get("type", "private")
             plaintext_message = data.get("message")
 
             if message_type == "private":
