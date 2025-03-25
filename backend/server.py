@@ -112,17 +112,26 @@ async def logout_user():
 async def websocket_endpoint(websocket: WebSocket):
     """Handles real-time chat via WebSockets."""
     await websocket.accept()
-    token = websocket.headers.get("Authorization")
-    print(f"authorization gotten1")
 
-    if not token or not token.startswith("Bearer "):
+    # Wait for the first message, which should be the authentication message
+    auth_message = await websocket.receive_text()
+    print(f"Received authentication message: {auth_message}")
+
+    try:
+        auth_data = json.loads(auth_message)
+        token = auth_data.get("token")
+    except Exception:
+        await websocket.close(code=4001)  # Unauthorized
+        print("Invalid authentication message format")
+        return
+
+    if not token:
         await websocket.close(code=4001)  # Unauthorized
         print(f"not authorized1")
         return
 
-    token = token.split("Bearer ")[1]
-    sender_uid = verify_token(token)
 
+    sender_uid = verify_token(token)
     if not sender_uid:
         await websocket.close(code=4001)  # Unauthorized
         print(f"not authorized2")
