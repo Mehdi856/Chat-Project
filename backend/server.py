@@ -182,17 +182,30 @@ async def websocket_endpoint(websocket: WebSocket):
         print(f"❌ WebSocket Error: {e}")
 
 
-# 🔥 Fetch Contacts
+
 @app.get("/contacts/{uid}")
 async def get_contacts(uid: str):
-    """Retrieves the contact list of a user."""
+    """Retrieves the contact list of a user, including names and UIDs."""
     user_ref = db.collection("users").document(uid).get()
     
     if not user_ref.exists:
         raise HTTPException(status_code=404, detail="User not found")
 
     user_data = user_ref.to_dict()
-    return {"contacts": user_data.get("contacts", [])}
+    contact_uids = user_data.get("contacts", [])
+
+    # ✅ Fetch full user details for each contact
+    contacts = []
+    for contact_uid in contact_uids:
+        contact_ref = db.collection("users").document(contact_uid).get()
+        if contact_ref.exists:
+            contact_data = contact_ref.to_dict()
+            contacts.append({
+                "uid": contact_uid,
+                "username": contact_data.get("name", "Unknown")
+            })
+
+    return {"contacts": contacts}  # ✅ Now returning full objects
 
 
 # 🔥 Add Contact
