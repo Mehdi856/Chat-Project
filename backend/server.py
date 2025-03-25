@@ -113,6 +113,7 @@ async def websocket_endpoint(websocket: WebSocket):
     """Handles real-time chat via WebSockets."""
     await websocket.accept()
     token = websocket.headers.get("Authorization")
+    print(f"authorization gotten1")
 
     if not token or not token.startswith("Bearer "):
         await websocket.close(code=4001)  # Unauthorized
