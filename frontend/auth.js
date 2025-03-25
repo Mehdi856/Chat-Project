@@ -1,25 +1,20 @@
 // Wait for DOM to load
 document.addEventListener("DOMContentLoaded", function () {
-  // If on login page, setup login/signup logic
   if (document.getElementById("container")) {
     setupLoginPage();
   }
 
-  // If on chat page, setup logout button
   const logoutBtn = document.getElementById("logout-btn");
   if (logoutBtn) {
     logoutBtn.addEventListener("click", logoutUser);
   }
 
-  // Redirect authenticated users away from login page
   if (isAuthenticated() && document.getElementById("container")) {
     window.location.href = "index.html";
   }
 });
 
-/**
- * Setup login and signup forms
- */
+// Setup login/signup forms
 function setupLoginPage() {
   const signUpButton = document.getElementById("signUp");
   const signInButton = document.getElementById("signIn");
@@ -27,7 +22,6 @@ function setupLoginPage() {
   const signInBtn = document.getElementById("signInBtn");
   const container = document.getElementById("container");
 
-  // Handle form switching
   signUpButton?.addEventListener("click", (e) => {
     e.preventDefault();
     container.classList.add("right-panel-active");
@@ -48,7 +42,6 @@ function setupLoginPage() {
     container.classList.remove("right-panel-active");
   });
 
-  // Handle sign-in form submission
   document.getElementById("signin-form")?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const email = document.getElementById("signin-email").value;
@@ -58,7 +51,6 @@ function setupLoginPage() {
     if (result.error) showMessage(result.error, "error");
   });
 
-  // Handle sign-up form submission
   document.getElementById("signup-form")?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const name = document.getElementById("signup-name").value;
@@ -75,9 +67,7 @@ function setupLoginPage() {
   });
 }
 
-/**
- * Register a new user with FastAPI
- */
+// Register a new user
 async function registerUser(email, password, name) {
   try {
     const response = await fetch("https://chat-project-2.onrender.com/register", {
@@ -97,9 +87,7 @@ async function registerUser(email, password, name) {
   }
 }
 
-/**
- * Log in a user with FastAPI
- */
+// Log in a user
 async function loginUser(email, password) {
   try {
     const response = await fetch("https://chat-project-2.onrender.com/login", {
@@ -111,7 +99,6 @@ async function loginUser(email, password) {
     const data = await response.json();
     if (!response.ok) throw new Error(data.detail || "Login failed");
 
-    // Store token in localStorage
     localStorage.setItem("user", JSON.stringify(data));
 
     window.location.href = "index.html";
@@ -122,24 +109,23 @@ async function loginUser(email, password) {
   }
 }
 
-/**
- * Log out the current user
- */
+// Get current user from localStorage
+function getCurrentUser() {
+  return JSON.parse(localStorage.getItem("user")) || null;
+}
+
+// Log out user
 function logoutUser() {
   localStorage.removeItem("user");
   window.location.href = "login.html";
 }
 
-/**
- * Check if a user is authenticated
- */
+// Check if user is authenticated
 function isAuthenticated() {
   return localStorage.getItem("user") !== null;
 }
 
-/**
- * Show popup message
- */
+// Show messages
 function showMessage(message, type = "info") {
   let messageContainer = document.getElementById("message-container");
 
@@ -164,6 +150,5 @@ function showMessage(message, type = "info") {
   }, 3000);
 }
 
-// Export showMessage function
-export { showMessage , registerUser , loginUser };
-
+// Export functions
+export { showMessage, registerUser, loginUser, getCurrentUser, logoutUser };
