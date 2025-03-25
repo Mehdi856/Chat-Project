@@ -8,7 +8,7 @@ class WebSocketManager:
 
     async def connect(self, websocket: WebSocket, uid: str):
         """Adds a new WebSocket connection or replaces an existing one."""
-        await websocket.accept()
+        
         self.active_connections[uid] = websocket  # Store by UID
 
     async def disconnect(self, uid: str):
