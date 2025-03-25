@@ -116,6 +116,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
     if not token or not token.startswith("Bearer "):
         await websocket.close(code=4001)  # Unauthorized
+        print(f"not authorized1")
         return
 
     token = token.split("Bearer ")[1]
@@ -123,6 +124,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
     if not sender_uid:
         await websocket.close(code=4001)  # Unauthorized
+        print(f"not authorized2")
         return
 
     await websocket_manager.connect(websocket, sender_uid)
