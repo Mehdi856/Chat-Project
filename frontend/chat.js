@@ -15,7 +15,7 @@ let unreadMessages = {}; // Stores unread message counts per user
 
 async function initChat() {
     const user = getCurrentUser();
-    if (!user || !user.token) {
+    if (!user ) {
         window.location.href = "login.html"; // Redirect if not logged in
         return;
     }
@@ -48,10 +48,11 @@ async function loadContacts() {
 
 function setupWebSocket(user) {
     ws = new WebSocket(`wss://chat-project-2.onrender.com/ws`);
-
+    
     ws.onopen = () => {
+        const user = getCurrentUser();
         console.log("✅ WebSocket connected");
-        ws.send(JSON.stringify({ type: "auth", token: user.token })); // Authenticate user
+        ws.send(JSON.stringify({ token: user.token })); // Authenticate user
     };
 
     ws.onmessage = (event) => {
@@ -102,14 +103,23 @@ async function sendMessage() {
 }
 
 async function openChat(contact) {
-    currentChatUID = contact.uid;
-    messagesContainer.innerHTML = ""; // Clear previous messages
-    unreadMessages[contact.uid] = 0; // Reset unread count
-    updateContactUI(); // Refresh contact list
+  currentChatUID = contact.uid;
+  messagesContainer.innerHTML = ""; // Clear previous messages
+  unreadMessages[contact.uid] = 0; // Reset unread count
+  updateContactUI(); // Refresh contact list
 
-    // Load previous messages
-    await loadMessages(contact.uid);
+  // ✅ Hide the "no chat selected" message
+  document.getElementById("no-chat-selected").style.display = "none";
+
+  // ✅ Show the main chat interface
+  document.getElementById("active-chat").style.display = "flex";
+
+  // ✅ Update chat header
+  document.getElementById("chat-name").textContent = contact.username || contact.uid;
+
+  await loadMessages(contact.uid);
 }
+
 
 async function loadMessages(contactUID) {
     try {

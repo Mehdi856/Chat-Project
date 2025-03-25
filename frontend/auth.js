@@ -1,3 +1,23 @@
+// Import Firebase modules
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.2/firebase-app.js";
+import { 
+  getAuth, signInWithCustomToken, signOut 
+} from "https://www.gstatic.com/firebasejs/10.7.2/firebase-auth.js";
+
+// Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyBuGGwsMdxtxDjPBJ8YcqVIX3OixffyO8E",
+  authDomain: "chat-room-6db06.firebaseapp.com",
+  projectId: "chat-room-6db06",
+  storageBucket: "chat-room-6db06.appspot.com",
+  messagingSenderId: "441142419097",
+  appId: "1:441142419097:web:beb9d622a6c11272496208"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+
 // Wait for DOM to load
 document.addEventListener("DOMContentLoaded", function () {
   if (document.getElementById("container")) {
@@ -67,7 +87,6 @@ function setupLoginPage() {
   });
 }
 
-// Register a new user
 async function registerUser(email, password, name) {
   try {
     const response = await fetch("https://chat-project-2.onrender.com/register", {
@@ -79,15 +98,15 @@ async function registerUser(email, password, name) {
     const data = await response.json();
     if (!response.ok) throw new Error(data.detail || "Registration failed");
 
-    showMessage("Registration successful! You can log in now.", "success");
-    return true;
+    // Automatically log in after registration
+    return await loginUser(email, password);
   } catch (error) {
     console.error("Registration error:", error);
     return { error: error.message };
   }
 }
 
-// Log in a user
+
 async function loginUser(email, password) {
   try {
     const response = await fetch("https://chat-project-2.onrender.com/login", {
@@ -99,8 +118,21 @@ async function loginUser(email, password) {
     const data = await response.json();
     if (!response.ok) throw new Error(data.detail || "Login failed");
 
-    localStorage.setItem("user", JSON.stringify(data));
+    // 1️⃣ Sign in using Firebase custom token
+    const userCredential = await signInWithCustomToken(auth, data.token);
+    const user = userCredential.user;
 
+    // 2️⃣ Get Firebase ID token
+    const idToken = await user.getIdToken();
+    const userData = { 
+      email,
+      uid: data.uid,         // 🔥 Store UID from backend 
+      customToken: data.token,  // Backend custom token
+      idToken: idToken          // Firebase ID token
+    }
+    // 3️⃣ Store both tokens
+    localStorage.setItem("user", JSON.stringify(userData));
+    console.log("✅ User saved to localStorage:", userData);
     window.location.href = "index.html";
     return true;
   } catch (error) {
@@ -109,15 +141,31 @@ async function loginUser(email, password) {
   }
 }
 
+
+
 // Get current user from localStorage
 function getCurrentUser() {
-  return JSON.parse(localStorage.getItem("user")) || null;
+  const user = JSON.parse(localStorage.getItem("user"));
+    if (!user || !user.idToken || !user.uid) return null; // 🔥 Ensure `uid` is present
+
+    return {
+        email: user.email,
+        uid: user.uid,      // ✅ Return UID
+        token: user.idToken, // ✅ Firebase ID token
+        customToken: user.customToken // ✅ Backend custom token
+    };
 }
 
 // Log out user
-function logoutUser() {
-  localStorage.removeItem("user");
-  window.location.href = "login.html";
+async function logoutUser() {
+  try {
+    await signOut(auth);
+    localStorage.removeItem("user");
+    window.location.href = "login.html";
+  } catch (error) {
+    console.error("Logout error:", error);
+    showMessage("Logout failed!", "error");
+  }
 }
 
 // Check if user is authenticated
