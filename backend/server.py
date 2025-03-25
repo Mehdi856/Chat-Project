@@ -12,7 +12,7 @@ app = FastAPI()
 # ✅ CORS Middleware (Allow Frontend)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://frontend-avd1zw1un-fares-projects-d76a0c1b.vercel.app"],
+    allow_origins=["https://frontend-cdipeujgm-fares-projects-d76a0c1b.vercel.app"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -107,91 +107,116 @@ async def logout_user():
     return {"message": "Logout successful!"}
 
 
-# 🔥 WebSocket for Real-time Chat
+import json
+from fastapi import WebSocket, WebSocketDisconnect
+
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     """Handles real-time chat via WebSockets."""
     await websocket.accept()
 
-    # Wait for the first message, which should be the authentication message
-    auth_message = await websocket.receive_text()
-    print(f"Received authentication message: {auth_message}")
-
     try:
-        auth_data = json.loads(auth_message)
-        token = auth_data.get("token")
-    except Exception:
-        await websocket.close(code=4001)  # Unauthorized
-        print("Invalid authentication message format")
-        return
+        # 🔹 Wait for authentication message
+        auth_message = await websocket.receive_text()
+        print(f"🔹 Received authentication message: {auth_message}")
 
-    if not token:
-        await websocket.close(code=4001)  # Unauthorized
-        print(f"not authorized1")
-        return
+        try:
+            auth_data = json.loads(auth_message)
+            token = auth_data.get("token")
+        except json.JSONDecodeError:
+            await websocket.send_json({"error": "Invalid JSON format"})
+            await websocket.close(code=4001)  # Unauthorized
+            print("❌ Invalid JSON format in authentication message")
+            return
 
+        if not token:
+            await websocket.send_json({"error": "Missing authentication token"})
+            await websocket.close(code=4001)  # Unauthorized
+            print("❌ Authentication token missing")
+            return
 
-    sender_uid = verify_token(token)
-    if not sender_uid:
-        await websocket.close(code=4001)  # Unauthorized
-        print(f"not authorized2")
-        return
+        # 🔹 Verify token
+        sender_uid = verify_token(token)
+        if not sender_uid:
+            await websocket.send_json({"error": "Invalid authentication token"})
+            await websocket.close(code=4001)  # Unauthorized
+            print("❌ Invalid token, could not verify user")
+            return
 
-    await websocket_manager.connect(websocket, sender_uid)
+        # ✅ User authenticated
+        print(f"✅ User {sender_uid} authenticated")
+        await websocket_manager.connect(websocket, sender_uid)
 
-    try:
         while True:
-            data = await websocket.receive_json()
-            message_type = "private"        # data.get("type", "private")
-            plaintext_message = data.get("message")
+            try:
+                # 🔹 Receive & parse message
+                data = await websocket.receive_json()
+                message_type =  "private" # data.get("type", "private")
+                plaintext_message = data.get("message")
 
-            if message_type == "private":
-                receiver_uid = data.get("receiver")
-                if not receiver_uid or not plaintext_message:
+                if not plaintext_message:
+                    print("⚠️ Received empty message, ignoring...")
                     continue
 
-                encrypted_message = encrypt_message(plaintext_message)
+                if message_type == "private":
+                    receiver_uid = data.get("receiver")
+                    if not receiver_uid:
+                        print("⚠️ No receiver provided for private message")
+                        continue
 
-                # ✅ Store Message in Firestore
-                db.collection("messages").add({
-                    "sender": sender_uid,
-                    "receiver": receiver_uid,
-                    "message": encrypted_message,
-                    "timestamp": firestore.SERVER_TIMESTAMP
-                })
+                    encrypted_message = encrypt_message(plaintext_message)
 
-                # ✅ Forward Message to Online User
-                await websocket_manager.send_message(receiver_uid, encrypted_message)
+                    # ✅ Store message in Firestore
+                    db.collection("messages").add({
+                        "sender": sender_uid,
+                        "receiver": receiver_uid,
+                        "message": encrypted_message,
+                        "timestamp": firestore.SERVER_TIMESTAMP
+                    })
 
-            elif message_type == "group":
-                group_id = data.get("group_id")
-                if not group_id or not plaintext_message:
-                    continue
+                    # ✅ Forward to receiver if online
+                    await websocket_manager.send_message(receiver_uid, encrypted_message)
 
-                encrypted_message = encrypt_message(plaintext_message)
+                elif message_type == "group":
+                    group_id = data.get("group_id")
+                    if not group_id:
+                        print("⚠️ No group ID provided for group message")
+                        continue
 
-                # ✅ Store Group Message in Firestore
-                db.collection("group_messages").add({
-                    "group_id": group_id,
-                    "sender": sender_uid,
-                    "message": encrypted_message,
-                    "timestamp": firestore.SERVER_TIMESTAMP
-                })
+                    encrypted_message = encrypt_message(plaintext_message)
 
-                # ✅ Forward to Online Group Members
-                group_ref = db.collection("groups").document(group_id).get()
-                if group_ref.exists:
-                    group_data = group_ref.to_dict()
-                    members = group_data.get("members", [])
+                    # ✅ Store group message in Firestore
+                    db.collection("group_messages").add({
+                        "group_id": group_id,
+                        "sender": sender_uid,
+                        "message": encrypted_message,
+                        "timestamp": firestore.SERVER_TIMESTAMP
+                    })
 
-                    for member in members:
-                        if member != sender_uid:
-                            await websocket_manager.send_message(member, encrypted_message)
+                    # ✅ Forward message to group members
+                    group_ref = db.collection("groups").document(group_id).get()
+                    if group_ref.exists:
+                        group_data = group_ref.to_dict()
+                        members = group_data.get("members", [])
+
+                        for member in members:
+                            if member != sender_uid:
+                                await websocket_manager.send_message(member, encrypted_message)
+
+            except json.JSONDecodeError:
+                print("❌ Received invalid JSON message")
+                continue
+            except Exception as e:
+                print(f"🔥 Unexpected WebSocket error: {e}")
+                break
 
     except WebSocketDisconnect:
+        print(f"🔴 User {sender_uid} disconnected")
         await websocket_manager.disconnect(sender_uid)
     except Exception as e:
-        print(f"❌ WebSocket Error: {e}")
+        print(f"🔥 Critical WebSocket Error: {e}")
+        await websocket.close(code=1011)  # Internal server error
+
 
 
 
