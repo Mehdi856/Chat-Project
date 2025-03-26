@@ -55,13 +55,13 @@ function setupWebSocket(user) {
         ws.send(JSON.stringify({ token: user.token })); // Authenticate user
     };
 
-    ws.onmessage = (event) => {
+    ws.onmessage =   (event) => {
         try {
             const message = JSON.parse(event.data);
 
-            if (message.type === "message") {
+            if (message.type === "message") { //to fix later when adding media
                 if (message.sender === currentChatUID) {
-                    renderMessage(message);
+                    openChat(currentChatUID);
                 } else {
                     unreadMessages[message.sender] = (unreadMessages[message.sender] || 0) + 1;
                     updateContactUI(); // Update unread message count
@@ -133,7 +133,7 @@ async function loadMessages(contactUID) {
         if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
 
         const messages = await response.json();
-        messages.forEach(renderMessage);
+        messages.forEach(renderMessage);     
     } catch (error) {
         console.error("❌ Failed to load messages:", error);
     }
@@ -183,12 +183,13 @@ function renderContacts(contacts) {
       contactItem.classList.add("contact-item");
       contactItem.dataset.uid = contact.uid; // ✅ Correctly set UID
       contactItem.innerHTML = `
-          <span>${contact.uid || "Unknown"}</span> <!-- Avoid undefined -->
+          <span>${contact.username || "Unknown"}</span> <!-- Avoid undefined -->
           <span class="unread-count" style="display: none;"></span>
       `;
       contactItem.addEventListener("click", () => openChat({ uid: contact.uid, username: contact.username })); // ✅ Pass correct object
       contactsContainer.appendChild(contactItem);
   });
+
 }
 
 // Function to render messages
@@ -196,8 +197,11 @@ function renderMessage(message) {
     const messageDiv = document.createElement("div");
     messageDiv.classList.add("message", message.sender === getCurrentUser().uid ? "sent" : "received");
     messageDiv.textContent = message.text;
-    messagesContainer.appendChild(messageDiv);
+    messagesContainer.prepend(messageDiv);
+    
+
 }
+
 
 // Initialize chat on page load
 initChat();
