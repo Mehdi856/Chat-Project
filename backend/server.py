@@ -152,7 +152,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 # 🔹 Receive & parse message
                 data = await websocket.receive_json()
                 message_type =  "private" # data.get("type", "private")
-                plaintext_message = data.get("message")
+                plaintext_message = data.get("text") #changed "message to text will need to be changed later"
 
                 if not plaintext_message:
                     print("⚠️ Received empty message, ignoring...")

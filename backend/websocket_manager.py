@@ -20,7 +20,11 @@ class WebSocketManager:
         websocket = self.active_connections.get(uid)
         if websocket:
             try:
-                await websocket.send_text(message)
+                await websocket.send_json({
+                    "type": "message",
+                    "sender": uid,
+                    "text": message
+                })
             except Exception:
                 await self.disconnect(uid)  # Remove if sending fails
 
