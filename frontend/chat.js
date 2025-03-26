@@ -3,49 +3,59 @@ import { getCurrentUser, logoutUser } from "./auth.js";
 const BACKEND_URL = "https://chat-project-2.onrender.com";
 let ws = null; // WebSocket connection
 
+// DOM Elements
 const messagesContainer = document.getElementById("messages-container");
 const contactsContainer = document.getElementById("contacts-list");
 const messageInput = document.getElementById("message-input");
 const sendBtn = document.getElementById("send-btn");
 const logoutBtn = document.getElementById("logout-btn");
 const typingIndicator = document.getElementById("typing-indicator");
+const userInfoElement = document.getElementById("user-info");
+const userAvatarElement = document.getElementById("user-avatar");
+const noChatSelected = document.getElementById("no-chat-selected");
+const activeChat = document.getElementById("active-chat");
+const chatNameElement = document.getElementById("chat-name");
+const chatAvatarElement = document.getElementById("chat-avatar");
 
-let currentChatUID = null; // Stores the UID of the currently opened chat
-let unreadMessages = {}; // Stores unread message counts per user
+// State
+let currentChatUID = null;
+let unreadMessages = {};
+let contactsData = [];
+let messagesData = {};
+
+// Initialize chat when page loads
+document.addEventListener('DOMContentLoaded', initChat);
 
 async function initChat() {
     const user = getCurrentUser();
     if (!user) {
-        window.location.href = "login.html"; // Redirect if not logged in
+        window.location.href = "login.html";
         return;
     }
 
-    // Set user avatar and name in header
-    const userAvatar = document.getElementById("user-avatar");
-    userAvatar.textContent = user.username[0].toUpperCase();
-    userAvatar.style.background = generateAvatarColor(user.username);
-
-    document.getElementById("user-info").textContent = user.username;
-
-    await loadContacts(); // Load contact list from backend
-    setupWebSocket(user); // Connect to WebSocket server
-    setupEventListeners(); // Attach event listeners
+    updateUserHeader(user);
+    await loadContacts();
+    setupWebSocket(user);
+    setupEventListeners();
 }
 
-// Function to generate consistent avatar background color
-function generateAvatarColor(username) {
-    let hash = 0;
-    for (let i = 0; i < username.length; i++) {
-        hash = username.charCodeAt(i) + ((hash << 5) - hash);
+function updateUserHeader(user) {
+    if (user && user.username) {
+        userInfoElement.textContent = user.username;
+        const firstLetter = user.username.charAt(0).toUpperCase();
+        userAvatarElement.textContent = firstLetter;
+        
+        // Generate consistent color based on username
+        const colors = ['#6e8efb', '#a777e3', '#4CAF50', '#FF5722', '#607D8B'];
+        const colorIndex = user.username.length % colors.length;
+        userAvatarElement.style.background = colors[colorIndex];
     }
-    const hue = hash % 360;
-    return `hsl(${hue}, 70%, 50%)`;
 }
 
 async function loadContacts() {
     try {
         const user = getCurrentUser();
-        if (!user || !user.token || !user.uid) throw new Error("User not authenticated");
+        if (!user?.token || !user?.uid) throw new Error("User not authenticated");
 
         const response = await fetch(`${BACKEND_URL}/contacts/${user.uid}`, {
             headers: { Authorization: `Bearer ${user.token}` },
@@ -54,12 +64,171 @@ async function loadContacts() {
         if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
 
         const data = await response.json();
-        const contacts = data.contacts || []; // Ensure contacts is an array
-        const filteredContacts = contacts.filter(contact => contact.uid !== user.uid); // Exclude self
+        contactsData = data.contacts || [];
+        const filteredContacts = contactsData.filter(contact => contact.uid !== user.uid);
+        
+        // Load last messages for each contact
+        await Promise.all(filteredContacts.map(async contact => {
+            const messages = await loadMessages(contact.uid, true); // true = load only last message
+            messagesData[contact.uid] = messages || [];
+        }));
+
         renderContacts(filteredContacts);
     } catch (error) {
         console.error("❌ Failed to load contacts:", error);
     }
+}
+
+function renderContacts(contacts) {
+    contactsContainer.innerHTML = "";
+    
+    contacts.forEach(contact => {
+        const contactItem = document.createElement("div");
+        contactItem.classList.add("contact-item");
+        contactItem.dataset.uid = contact.uid;
+        
+        // Avatar styling
+        const firstLetter = contact.username?.charAt(0).toUpperCase() || "?";
+        const colors = ['#6e8efb', '#a777e3', '#4CAF50', '#FF5722', '#607D8B'];
+        const colorIndex = contact.username?.length % colors.length || 0;
+        const avatarColor = colors[colorIndex];
+        
+        // Get last message preview
+        const lastMessage = getLastMessagePreview(contact.uid);
+        const lastMessageText = lastMessage?.text || "No messages yet";
+        const lastMessageTime = lastMessage?.timestamp ? formatTime(new Date(lastMessage.timestamp)) : "";
+        
+        contactItem.innerHTML = `
+            <div class="contact-avatar" style="background: ${avatarColor}">${firstLetter}</div>
+            <div class="contact-info">
+                <div class="contact-name-row">
+                    <span class="contact-name">${contact.username || "Unknown"}</span>
+                    <span class="message-time">${lastMessageTime}</span>
+                </div>
+                <div class="contact-preview">${lastMessageText}</div>
+            </div>
+            <span class="unread-count" style="display: ${unreadMessages[contact.uid] > 0 ? 'flex' : 'none'}">
+                ${unreadMessages[contact.uid] || ''}
+            </span>
+        `;
+        
+        contactItem.addEventListener("click", () => openChat(contact));
+        contactsContainer.appendChild(contactItem);
+    });
+}
+
+function getLastMessagePreview(contactUID) {
+    if (!messagesData[contactUID] || messagesData[contactUID].length === 0) return null;
+    return messagesData[contactUID][0]; // Return most recent message
+}
+
+function formatTime(date) {
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function formatDate(date) {
+    return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+}
+
+async function openChat(contact) {
+    currentChatUID = contact.uid;
+    messagesContainer.innerHTML = "";
+    unreadMessages[contact.uid] = 0;
+    updateContactUI();
+
+    // Update UI
+    noChatSelected.style.display = "none";
+    activeChat.style.display = "flex";
+    chatNameElement.textContent = contact.username || contact.uid;
+    
+    // Set chat avatar
+    const firstLetter = contact.username?.charAt(0).toUpperCase() || "?";
+    chatAvatarElement.textContent = firstLetter;
+    const colors = ['#6e8efb', '#a777e3', '#4CAF50', '#FF5722', '#607D8B'];
+    const colorIndex = contact.username?.length % colors.length || 0;
+    chatAvatarElement.style.background = colors[colorIndex];
+
+    // Load and render messages
+    const messages = await loadMessages(contact.uid);
+    messagesData[contact.uid] = messages;
+    renderMessages(messages);
+}
+
+async function loadMessages(contactUID, getLastOnly = false) {
+    try {
+        const user = getCurrentUser();
+        if (!user?.token) throw new Error("User not authenticated");
+
+        let url = `${BACKEND_URL}/messages/${contactUID}`;
+        if (getLastOnly) url += '?limit=1';
+
+        const response = await fetch(url, {
+            headers: { Authorization: `Bearer ${user.token}` },
+        });
+
+        if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
+
+        const messages = await response.json();
+        return Array.isArray(messages) ? messages : [];
+    } catch (error) {
+        console.error("❌ Failed to load messages:", error);
+        return [];
+    }
+}
+
+function renderMessages(messages) {
+    messagesContainer.innerHTML = "";
+    
+    // Group messages by date
+    const groupedMessages = groupMessagesByDate(messages);
+    
+    // Render each group
+    Object.entries(groupedMessages).forEach(([date, messages]) => {
+        // Add date separator
+        const dateDivider = document.createElement("div");
+        dateDivider.classList.add("date-divider");
+        dateDivider.textContent = date;
+        messagesContainer.appendChild(dateDivider);
+        
+        // Render messages for this date
+        messages.forEach(message => {
+            renderMessage(message);
+        });
+    });
+
+    // Scroll to bottom
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+function groupMessagesByDate(messages) {
+    const groups = {};
+    
+    messages.forEach(message => {
+        const messageDate = new Date(message.timestamp || Date.now());
+        const dateKey = formatDate(messageDate);
+        
+        if (!groups[dateKey]) {
+            groups[dateKey] = [];
+        }
+        
+        groups[dateKey].push(message);
+    });
+    
+    return groups;
+}
+
+function renderMessage(message) {
+    const messageDiv = document.createElement("div");
+    messageDiv.classList.add("message", message.sender === getCurrentUser().uid ? "sent" : "received");
+    
+    const timeString = formatTime(new Date(message.timestamp || Date.now()));
+    
+    messageDiv.innerHTML = `
+        <div class="message-content">${message.text}</div>
+        <div class="message-time">${timeString}</div>
+    `;
+    
+    messagesContainer.appendChild(messageDiv);
 }
 
 function setupWebSocket(user) {
@@ -67,7 +236,7 @@ function setupWebSocket(user) {
     
     ws.onopen = () => {
         console.log("✅ WebSocket connected");
-        ws.send(JSON.stringify({ token: user.token })); // Authenticate user
+        ws.send(JSON.stringify({ token: user.token }));
     };
 
     ws.onmessage = (event) => {
@@ -75,12 +244,7 @@ function setupWebSocket(user) {
             const message = JSON.parse(event.data);
 
             if (message.type === "message") {
-                if (message.sender === currentChatUID) {
-                    renderMessage(message);
-                } else {
-                    unreadMessages[message.sender] = (unreadMessages[message.sender] || 0) + 1;
-                    updateContactUI(); // Update unread message count
-                }
+                handleNewMessage(message);
             } else if (message.type === "typing") {
                 showTypingIndicator(message.sender);
             }
@@ -91,12 +255,58 @@ function setupWebSocket(user) {
 
     ws.onclose = () => {
         console.warn("⚠️ WebSocket disconnected. Reconnecting in 3 seconds...");
-        setTimeout(() => setupWebSocket(user), 3000); // Auto-reconnect
+        setTimeout(() => setupWebSocket(user), 3000);
     };
 
     ws.onerror = (error) => {
         console.error("❌ WebSocket error:", error);
     };
+}
+
+function handleNewMessage(message) {
+    // Add to messages data
+    if (!messagesData[message.sender]) {
+        messagesData[message.sender] = [];
+    }
+    messagesData[message.sender].unshift(message);
+    
+    if (message.sender === currentChatUID) {
+        // If current chat is open, render the message
+        renderMessage(message);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    } else {
+        // Otherwise increment unread count
+        unreadMessages[message.sender] = (unreadMessages[message.sender] || 0) + 1;
+        updateContactUI();
+    }
+}
+
+function setupEventListeners() {
+    // Send message on button click or Enter key
+    sendBtn.addEventListener("click", sendMessage);
+    messageInput.addEventListener("keypress", (e) => {
+        if (e.key === "Enter") sendMessage();
+    });
+
+    // Typing indicator
+    let typingTimeout;
+    messageInput.addEventListener("input", () => {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ 
+                type: "typing", 
+                sender: getCurrentUser().uid,
+                receiver: currentChatUID
+            }));
+            
+            clearTimeout(typingTimeout);
+            typingTimeout = setTimeout(() => {
+                typingIndicator.style.display = "none";
+            }, 2000);
+        }
+    });
+
+    // Logout button
+    logoutBtn.addEventListener("click", logoutUser);
 }
 
 async function sendMessage() {
@@ -107,167 +317,56 @@ async function sendMessage() {
         const user = getCurrentUser();
         if (!user) throw new Error("User not authenticated");
 
+        // Create message object
         const message = {
-            type: "message", 
-            text, 
-            sender: user.uid, 
+            text,
+            sender: user.uid,
             receiver: currentChatUID,
             timestamp: new Date().toISOString()
         };
 
-        // Send message via WebSocket
-        ws.send(JSON.stringify(message));
+        // Send via WebSocket
+        ws.send(JSON.stringify({ 
+            type: "message", 
+            ...message 
+        }));
 
-        // Clear input field
+        // Add to local data and render
+        if (!messagesData[currentChatUID]) {
+            messagesData[currentChatUID] = [];
+        }
+        messagesData[currentChatUID].unshift(message);
+        renderMessage(message);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+        // Clear input
         messageInput.value = "";
     } catch (error) {
         console.error("❌ Failed to send message:", error);
     }
 }
 
-async function openChat(contact) {
-    currentChatUID = contact.uid;
-    messagesContainer.innerHTML = ""; // Clear previous messages
-    unreadMessages[contact.uid] = 0; // Reset unread count
-    updateContactUI(); // Refresh contact list
-
-    // Hide the "no chat selected" message
-    document.getElementById("no-chat-selected").style.display = "none";
-
-    // Show the main chat interface
-    document.getElementById("active-chat").style.display = "flex";
-
-    // Update chat header
-    const chatAvatar = document.getElementById("chat-avatar");
-    chatAvatar.textContent = contact.username[0].toUpperCase();
-    chatAvatar.style.background = generateAvatarColor(contact.username);
-    document.getElementById("chat-name").textContent = contact.username || contact.uid;
-
-    await loadMessages(contact.uid);
-}
-
-async function loadMessages(contactUID) {
-    try {
-        const user = getCurrentUser();
-        if (!user || !user.token) throw new Error("User not authenticated");
-
-        const response = await fetch(`${BACKEND_URL}/messages/${contactUID}`, {
-            headers: { Authorization: `Bearer ${user.token}` },
-        });
-
-        if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
-
-        const messages = await response.json();
-        messages.forEach(renderMessage);     
-    } catch (error) {
-        console.error("❌ Failed to load messages:", error);
+function showTypingIndicator(senderUID) {
+    if (senderUID === currentChatUID) {
+        typingIndicator.style.display = "block";
+        typingIndicator.textContent = "typing...";
+        setTimeout(() => {
+            typingIndicator.style.display = "none";
+        }, 2000);
     }
 }
 
-function setupEventListeners() {
-    sendBtn.addEventListener("click", sendMessage);
-    messageInput.addEventListener("input", () => {
-        if (ws && ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({ type: "typing", sender: getCurrentUser().uid }));
-        }
-    });
-
-    logoutBtn.addEventListener("click", logoutUser);
-}
-
-// Utility function to update unread messages UI
 function updateContactUI() {
     document.querySelectorAll(".contact-item").forEach(item => {
         const uid = item.dataset.uid;
         const unreadCount = unreadMessages[uid] || 0;
         const unreadBadge = item.querySelector(".unread-count");
-        const lastMessagePreview = item.querySelector(".contact-preview");
 
         if (unreadCount > 0) {
             unreadBadge.textContent = unreadCount;
-            unreadBadge.style.display = "inline-block";
+            unreadBadge.style.display = "flex";
         } else {
             unreadBadge.style.display = "none";
         }
     });
 }
-
-// Function to show typing indicator
-function showTypingIndicator(senderUID) {
-    if (senderUID === currentChatUID) {
-        typingIndicator.textContent = "Typing...";
-        typingIndicator.style.display = "block";
-        setTimeout(() => {
-            typingIndicator.style.display = "none";
-        }, 2000); // Hide after 2s
-    }
-}
-
-function renderContacts(contacts) {
-    contactsContainer.innerHTML = "";
-    contacts.forEach(contact => {
-        const contactItem = document.createElement("div");
-        contactItem.classList.add("contact-item");
-        contactItem.dataset.uid = contact.uid;
-
-        // Create avatar with first letter
-        const avatar = document.createElement("div");
-        avatar.classList.add("contact-avatar");
-        avatar.textContent = contact.username[0].toUpperCase();
-        avatar.style.background = generateAvatarColor(contact.username);
-
-        // Create contact info container
-        const contactInfo = document.createElement("div");
-        contactInfo.classList.add("contact-info");
-
-        const contactName = document.createElement("div");
-        contactName.classList.add("contact-name");
-        contactName.textContent = contact.username || "Unknown";
-
-        const contactPreview = document.createElement("div");
-        contactPreview.classList.add("contact-preview");
-        contactPreview.textContent = "No messages yet"; // You can update this with last message later
-
-        const unreadBadge = document.createElement("span");
-        unreadBadge.classList.add("unread-count");
-        unreadBadge.style.display = "none";
-
-        contactInfo.appendChild(contactName);
-        contactInfo.appendChild(contactPreview);
-
-        contactItem.appendChild(avatar);
-        contactItem.appendChild(contactInfo);
-        contactItem.appendChild(unreadBadge);
-
-        contactItem.addEventListener("click", () => openChat(contact));
-        contactsContainer.appendChild(contactItem);
-    });
-}
-
-// Function to render messages
-function renderMessage(message) {
-    const messageDiv = document.createElement("div");
-    messageDiv.classList.add("message", message.sender === getCurrentUser().uid ? "sent" : "received");
-
-    const messageContent = document.createElement("div");
-    messageContent.classList.add("message-content");
-    messageContent.textContent = message.text;
-
-    const messageTime = document.createElement("div");
-    messageTime.classList.add("message-time");
-    messageTime.textContent = formatMessageTime(message.timestamp);
-
-    messageDiv.appendChild(messageContent);
-    messageDiv.appendChild(messageTime);
-
-    messagesContainer.prepend(messageDiv);
-}
-
-// Function to format message timestamp
-function formatMessageTime(timestamp) {
-    const date = new Date(timestamp);
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-}
-
-// Initialize chat on page load
-initChat();
