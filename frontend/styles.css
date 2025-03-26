@@ -589,7 +589,6 @@ header h1 {
 /*---------------------------------------------------------------- */
 
 
-/* Base styles */
 * {
   box-sizing: border-box;
   margin: 0;
@@ -597,7 +596,7 @@ header h1 {
 }
 
 body {
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Arial', sans-serif;
   background-color: #f0f2f5;
   margin: 0;
   padding: 0;
@@ -609,7 +608,7 @@ body {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  max-width: 100.3%;
+  max-width: 100%;
   margin: 0 auto;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
 }
@@ -621,370 +620,180 @@ header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
 
-header h1 {
-  font-weight: 600;
-  font-size: 24px;
-  margin: 0;
-}
-
-button {
-  background: linear-gradient(135deg, #6e8efb, #a777e3);
+#user-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
   color: white;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 25px;
-  cursor: pointer;
-  font-weight: 500;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  margin-right: 10px;
 }
 
-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+.user-profile {
+  display: flex;
+  align-items: center;
 }
 
-#logout-btn {
-  background: rgba(255, 255, 255, 0.2);
-  padding: 14px 30px;
-  font-size: 14px;
-}
-
-#logout-btn:hover {
-  background: rgba(255, 255, 255, 0.3);
+#user-info {
+  font-weight: bold;
 }
 
 .chat-container {
   display: flex;
   flex: 1;
-  height: calc(100vh - 110px);
-  position: relative;
+  height: calc(100vh - 70px);
 }
 
 .sidebar {
   width: 320px;
-  background-color: #f7f7f7;
-  border-right: 1px solid #eaeaea;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.search-container {
-  padding: 15px;
-  border-bottom: 1px solid #eaeaea;
-}
-
-.search-container input {
-  border-radius: 20px;
-  padding: 10px 15px;
-  font-size: 14px;
-  width: 100%;
   background-color: white;
-  border: 1px solid #eaeaea;
-  outline: none;
-}
-
-.search-container input:focus {
-  border-color: #6e8efb;
-  box-shadow: 0 0 0 3px rgba(110, 142, 251, 0.1);
+  border-right: 1px solid #e0e0e0;
+  overflow-y: auto;
 }
 
 .contacts-list {
-  overflow-y: auto;
-  flex: 1;
+  padding: 10px 0;
 }
 
-.contact {
+.contact-item {
   display: flex;
-  padding: 15px;
-  border-bottom: 1px solid #eaeaea;
+  align-items: center;
+  padding: 12px 20px;
   cursor: pointer;
-  transition: all 0.3s ease;
-  position: relative;
+  transition: background-color 0.2s;
 }
 
-.contact:hover {
-  background-color: #f0f0f0;
-}
-
-.contact.active {
-  background-color: #eef1ff;
-  border-left: 4px solid #6e8efb;
-}
-
-.contact-name-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  width: 100%;
-}
-
-.message-date {
-  font-size: 0.75rem;
-  color: #888;
-  white-space: nowrap;
-  margin-left: 4px;
-}
-
-/* Add this to your existing CSS (styles.css) */
-
-.unread-badge {
-  position: absolute;
-  right: 22px;
-  top: 69%;
-  transform: translateY(-50%);
-  background-color: #6e8efb;
-  color: white;
-  border-radius: 50%;
-  min-width: 22px;
-  height: 22px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  font-weight: bold;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-/* Optional: Add subtle animation when new messages arrive */
-@keyframes pulse {
-  0% { transform: translateY(-50%) scale(1); }
-  50% { transform: translateY(-50%) scale(1.1); }
-  100% { transform: translateY(-50%) scale(1); }
-}
-
-.unread-badge.new {
-  animation: pulse 0.5s ease;
+.contact-item:hover {
+  background-color: #f5f5f5;
 }
 
 .contact-avatar {
-  width: 45px;
-  height: 45px;
+  width: 50px;
+  height: 50px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #6e8efb, #a777e3);
-  color: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 600;
   margin-right: 15px;
-  flex-shrink: 0;
+  font-weight: bold;
+  color: white;
 }
 
 .contact-info {
-  flex: 1;
+  flex-grow: 1;
   overflow: hidden;
 }
 
 .contact-name {
-  font-weight: 600;
-  font-size: 15px;
+  font-weight: bold;
   margin-bottom: 5px;
 }
 
 .contact-preview {
-  font-size: 13px;
   color: #888;
+  font-size: 0.9em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.contact-meta {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  justify-content: space-between;
-  margin-left: 10px;
-}
-
-.contact-time {
-  font-size: 12px;
-  color: #888;
-  margin-bottom: 5px;
-}
-
-.contact-badge {
+.unread-count {
   background-color: #6e8efb;
   color: white;
   border-radius: 50%;
-  width: 20px;
+  min-width: 20px;
   height: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
-  font-weight: 600;
+  font-size: 0.8em;
 }
 
 .chat-main {
   flex: 1;
   display: flex;
   flex-direction: column;
-  position: relative;
-  background-color: #fff;
 }
 
 .chat-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   padding: 15px 20px;
-  border-bottom: 1px solid #eaeaea;
-  background-color: #fff;
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #e0e0e0;
 }
 
-.back-button {
-  font-size: 20px;
-  cursor: pointer;
+#chat-avatar {
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   margin-right: 15px;
-  color: #6e8efb;
-  font-weight: bolder;
-  transition: all 0.2s ease;
-}
-
-.back-button:hover {
-  transform: translateX(-3px);
+  font-weight: bold;
+  color: white;
 }
 
 .chat-contact {
   display: flex;
   align-items: center;
-  flex: 1;
 }
 
-.chat-header .contact-avatar {
-  width: 40px;
-  height: 40px;
-  margin-right: 10px;
-}
-
-.chat-actions {
-  display: flex;
-}
-
-.action-btn {
-  background: none;
-  border: none;
-  color: #888;
-  font-size: 20px;
-  margin: 0;
-  padding: 5px 10px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  border-radius: 50%;
-}
-
-.action-btn:hover {
-  background-color: #f0f0f0;
-  transform: translateY(0);
-  box-shadow: none;
-}
-
-.no-chat-selected {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  color: #888;
-  text-align: center;
-  padding: 20px;
-}
-
-.no-chat-message {
-  background-color: white;
-  padding: 20px 30px;
-  border-radius: 16px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-  font-size: 16px;
-  max-width: 300px;
-  margin: 0 auto;
-}
-
-.no-chat-icon {
-  font-size: 40px;
-  margin-bottom: 15px;
-  color: #a777e3;
+.contact-name {
+  font-weight: bold;
 }
 
 .messages-container {
   flex: 1;
   padding: 20px;
   overflow-y: auto;
-  background-color: #f8f9fa;
+  background-color: #f0f2f5;
   display: flex;
-  flex-direction: column;
-  padding-bottom: 10px;
-}
-
-.date-divider {
-  text-align: center;
-  margin: 20px 0;
-  color: #888;
-  font-size: 13px;
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.date-divider::before, .date-divider::after {
-  content: "";
-  flex: 1;
-  border-bottom: 1px solid #ddd;
-  margin: 0 10px;
+  flex-direction: column-reverse;
 }
 
 .message {
-  max-width: 75%;
-  margin-bottom: 2px;
-  position: relative;
+  max-width: 70%;
+  margin-bottom: 10px;
   display: flex;
   flex-direction: column;
-}
-
-.message.received {
-  align-self: flex-start;
 }
 
 .message.sent {
   align-self: flex-end;
 }
 
-.message-content {
-  padding: 12px 16px;
-  border-radius: 22px;
-  font-size: 15px;
-  max-width: 100%;
-  /* Remove the box-shadow to eliminate the white frame effect */
-  box-shadow: none;
+.message.received {
+  align-self: flex-start;
 }
 
-.message.received .message-content {
-  background-color: #e9e9eb;
-  color: #000;
-  border-bottom-left-radius: 8px;
+.message-content {
+  padding: 10px 15px;
+  border-radius: 18px;
+  font-size: 0.9em;
+  max-width: 100%;
 }
 
 .message.sent .message-content {
   background: linear-gradient(135deg, #6e8efb, #a777e3);
   color: white;
-  border-bottom-right-radius: 8px;
+}
+
+.message.received .message-content {
+  background-color: #e9e9eb;
+  color: #000;
 }
 
 .message-time {
-  font-size: 11px;
+  font-size: 0.7em;
   color: #888;
-  margin-top: 3px;
-  padding: 0 8px;
-}
-
-.message.sent .message-time {
+  margin-top: 5px;
   align-self: flex-end;
 }
 
@@ -996,458 +805,40 @@ button:hover {
   display: flex;
   padding: 15px;
   background-color: white;
-  border-top: 1px solid #eaeaea;
-}
-
-.message-input-container input {
-  flex: 1;
-  border-radius: 25px;
-  padding: 12px 20px;
-  margin: 0 10px 0 0;
-  border: 1px solid #eaeaea;
-  background-color: #f7f7f7;
-  transition: all 0.3s ease;
-  outline: none;
-}
-
-.message-input-container input:focus {
-  border-color: #6e8efb;
-  box-shadow: 0 0 0 3px rgba(110, 142, 251, 0.1);
-}
-
-#send-btn {
-  border-radius: 50%;
-  width: 45px;
-  height: 45px;
-  padding: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0;
-  background: linear-gradient(135deg, #6e8efb, #a777e3);
-  box-shadow: 0 2px 8px rgba(110, 142, 251, 0.3);
-}
-
-#send-btn::after {
-  content: "➤";
-  font-size: 23px;
-  font-weight: bold;
-}
-
-#send-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(110, 142, 251, 0.4);
-}
-
-.user-status {
-  display: flex;
-  align-items: center;
-}
-
-#user-info {
-  margin-right: 15px;
-  color: white;
-  font-size: 17px;
-  font-weight: bold;
-}
-
-.message-group {
-  display: flex;
-  flex-direction: column;
-  margin-bottom: 10px;
-}
-
-.message-group .message {
-  margin-bottom: 2px;
-}
-
-.message-group .message:last-child {
-  margin-bottom: 0;
-}
-
-@keyframes messageAppear {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.fade-in {
-  animation: messageAppear 0.3s forwards;
-}
-
-@media (max-width: 1024px) {
-  .sidebar {
-    width: 280px;
-  }
-}
-
-@media (max-width: 768px) {
-  .chat-container {
-    flex-direction: column;
-    height: calc(100vh - 110px);
-  }
-  
-  .sidebar {
-    width: 100%;
-    height: auto;
-    max-height: 100px;
-    border-right: none;
-    border-bottom: 1px solid #eaeaea;
-    flex-direction: row;
-  }
-  
-  .search-container {
-    width: 55%;
-    padding: 10px;
-    border-bottom: none;
-  }
-  
-  .contacts-list {
-    display: flex;
-    overflow-x: auto;
-    overflow-y: hidden;
-    flex: none;
-    height: 70px;
-    width: 100%;
-    padding: 5px 0;
-  }
-  
-  .contact {
-    flex-direction: column;
-    padding: 5px 10px;
-    border-bottom: none;
-    border-right: 1px solid #eaeaea;
-    align-items: center;
-    min-width: 90px;
-    height: 60px;
-  }
-  
-  .contact-avatar {
-    width: 30px;
-    height: 30px;
-    font-size: 12px;
-    margin-right: 0;
-    margin-bottom: 5px;
-  }
-  
-  .contact-info {
-    text-align: center;
-    width: 90%;
-  }
-  
-  .contact-name {
-    font-size: 10px;
-    margin-bottom: 0;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-    overflow: hidden;
-    max-width: 80px;
-  }
-  
-  .contact-preview, .contact-meta {
-    display: none;
-  }
-  
-  .contact.active {
-    border-left: none;
-    border-bottom: 3px solid #6e8efb;
-  }
-  
-  .messages-container {
-    padding: 10px;
-  }
-  
-  .message {
-    max-width: 85%;
-  }
-  
-  .chat-main {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-  }
-  
-  .back-button {
-    display: block;
-    margin-right: 10px;
-  }
-}
-
-@media (min-width: 769px) {
-  .back-button {
-    display: block;
-  }
-}
-
-@media (max-width: 480px) {
-  header {
-    padding: 10px 15px;
-  }
-  
-  header h1 {
-    font-size: 18px;
-  }
-  
-  #user-info {
-    font-size: 12px;
-    max-width: 120px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  
-  #logout-btn {
-    padding: 6px 12px;
-    font-size: 12px;
-  }
-  
-  .chat-header {
-    padding: 10px 15px;
-  }
-  
-  .chat-header .contact-avatar {
-    width: 30px;
-    height: 30px;
-  }
-  
-  .chat-header .contact-name {
-    font-size: 14px;
-  }
-  
-  .message-input-container {
-    padding: 10px;
-  }
-  
-  .message-input-container input {
-    padding: 8px 15px;
-  }
-  
-  #send-btn {
-    width: 35px;
-    height: 35px;
-  }
-  
-  .message-content {
-    padding: 10px 12px;
-    font-size: 14px;
-  }
-  
-  .message-time {
-    font-size: 10px;
-  }
-  
-  .back-button {
-    font-size: 18px;
-    margin-right: 8px;
-  }
-}
-/* Add these styles to your existing CSS */
-
-/* Typing indicator */
-.typing-indicator {
-  display: none;
-  font-size: 12px;
-  color: #6e8efb;
-  font-style: italic;
-  margin-left: 5px;
-  animation: blink 1s infinite;
-}
-
-@keyframes blink {
-  0% { opacity: 0.5; }
-  50% { opacity: 1; }
-  100% { opacity: 0.5; }
-}
-
-/* Message metadata container */
-.message-metadata {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  font-size: 11px;
-  color: #888;
-  margin-top: 8px;
-  padding: 0 1px;
-}
-
-.message.received .message-metadata {
-  justify-content: flex-start;
-}
-
-/* Message timestamp */
-.message-timestamp {
-  font-size: 13px;
-  color: #999;
-  margin-right: 2px;
-  font-weight: bold;
-}
-
-/* Message status indicators */
-.message-status {
-  font-size: 10px;
-  margin-left: 7px;
-}
-
-.message-status.delivered {
-  color: #a0a0a0;
-}
-
-.message-status.seen {
-  color: #6e8efb;
-}
-
-.message-status.seen::after {
-  content: "✓✓";
-  font-size: 11px;
-  margin-left: 2px;
-}
-
-.message-status.delivered::after {
-  content: "✓";
-  font-size: 11px;
-  margin-left: 2px;
-}
-
-/* Modify the chat header to accommodate typing indicator */
-.chat-header .contact-info {
-  display: flex;
-  flex-direction: column;
-}
-
-.chat-header .contact-name {
-  margin-bottom: 0;
-  line-height: 1.2;
-}
-
-/* Styling for message groups */
-.message-group {
-  margin-bottom: 12px;
-}
-
-.message-group .message {
-  margin-bottom: 2px;
-}
-
-.message-group .message:last-child {
-  margin-bottom: 0;
-}
-
-/* Improve the message appearance */
-.message-content {
-  padding: 10px 14px;
-  line-height: 1.4;
-  border-radius: 18px;
-}
-
-/* Fix existing message time styles */
-.message-time {
-  font-size: 10px;
-  color: #999;
-}
-
-.message-status {
-  margin-left: 4px;
-  font-size: 0.8em;
-}
-
-.message-status .fa-check {
-  color: #8a8a8a; /* Gray for delivered */
-}
-
-.message-status .fa-check-double {
-  color: #4fc3f7; /* Blue for seen */
-}
-
-/* Make sure the send button has appropriate icon */
-#send-btn {
-  background-color: #128c7e;
-  color: white;
-  border: none;
-  border-radius: 50%;
-  width: 40px;
-  height: 40px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* Fixing send button alignment in message input container */
-.message-input-container {
-  display: flex;
-  align-items: center;
-  padding: 10px;
   border-top: 1px solid #e0e0e0;
-  background-color: white;
 }
 
 #message-input {
   flex: 1;
-  padding: 10px 15px;
+  padding: 10px;
   border: 1px solid #ddd;
   border-radius: 20px;
-  outline: none;
   margin-right: 10px;
 }
 
-/* Style for typing indicator */
-.typing-indicator {
-  font-size: 0.8em;
-  color: #666;
-  font-style: italic;
-  display: none;
-}
-
-/* CSS for date separator */
-.date-separator {
-  display: flex;
-  align-items: center;
-  text-align: center;
-  margin: 10px 0;
-}
-
-.date-separator::before,
-.date-separator::after {
-  content: "";
-  flex: 1;
-  border-bottom: 1px solid #ddd;
-}
-
-.date-separator span {
-  padding: 0 10px;
-  background: #f5f5f5;
-  border-radius: 10px;
-  font-size: 12px;
-  color: #666;
-  margin: 0 10px;
-}
-
-#user-avatar {
-  width: 40px;
-  height: 40px;
+#send-btn {
+  background: linear-gradient(135deg, #6e8efb, #a777e3);
+  border: none;
   border-radius: 50%;
+  width: 45px;
+  height: 45px;
+  color: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: bold;
-  font-size: 18px;
-  color: white;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-  margin-right: 10px;
+  cursor: pointer;
 }
 
-.user-profile {
-  display: flex;
-  align-items: center;
-  background-color: rgba(255, 255, 255, 0.151);
-  border: 2px solid white;
-  border-radius: 30px;
-  padding: 6px 23px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+#send-btn::after {
+  content: "➤";
+  font-size: 20px;
+}
+
+.typing-indicator {
+  display: none;
+  font-size: 0.8em;
+  color: #6e8efb;
+  font-style: italic;
+  margin-top: 5px;
 }
 
