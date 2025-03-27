@@ -15,14 +15,14 @@ class WebSocketManager:
         """Removes a WebSocket connection."""
         self.active_connections.pop(uid, None)
 
-    async def send_message(self, uid: str, message: str):
+    async def send_message(self, uid: str, message: str , sender_uid: str):
         """Sends a message to a specific user if they're online."""
         websocket = self.active_connections.get(uid)
         if websocket:
             try:
                 await websocket.send_json({
                     "type": "message",
-                    "sender": uid,
+                    "sender": sender_uid,
                     "text": message
                 })
             except Exception:

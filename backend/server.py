@@ -175,7 +175,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     })
 
                     # ✅ Forward to receiver if online
-                    await websocket_manager.send_message(receiver_uid, plaintext_message)
+                    await websocket_manager.send_message(receiver_uid, plaintext_message,sender_uid)
 
                 elif message_type == "group":
                     group_id = data.get("group_id")
