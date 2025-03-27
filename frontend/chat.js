@@ -79,157 +79,6 @@ async function loadContacts() {
     }
 }
 
-function renderContacts(contacts) {
-    contactsContainer.innerHTML = "";
-    
-    contacts.forEach(contact => {
-        const contactItem = document.createElement("div");
-        contactItem.classList.add("contact-item");
-        contactItem.dataset.uid = contact.uid;
-        
-        // Avatar styling
-        const firstLetter = contact.username?.charAt(0).toUpperCase() || "?";
-        const colors = ['#6e8efb', '#a777e3', '#4CAF50', '#FF5722', '#607D8B'];
-        const colorIndex = contact.username?.length % colors.length || 0;
-        const avatarColor = colors[colorIndex];
-        
-        // Get last message preview
-        const lastMessage = getLastMessagePreview(contact.uid);
-        const lastMessageText = lastMessage?.text || "No messages yet";
-        const lastMessageTime = lastMessage?.timestamp ? formatTime(new Date(lastMessage.timestamp)) : "";
-        
-        contactItem.innerHTML = `
-            <div class="contact-avatar" style="background: ${avatarColor}">${firstLetter}</div>
-            <div class="contact-info">
-                <div class="contact-name-row">
-                    <span class="contact-name">${contact.username || "Unknown"}</span>
-                    <span class="message-time">${lastMessageTime}</span>
-                </div>
-                <div class="contact-preview">${lastMessageText}</div>
-            </div>
-            <span class="unread-count" style="display: ${unreadMessages[contact.uid] > 0 ? 'flex' : 'none'}">
-                ${unreadMessages[contact.uid] || ''}
-            </span>
-        `;
-        
-        contactItem.addEventListener("click", () => openChat(contact));
-        contactsContainer.appendChild(contactItem);
-    });
-}
-
-function getLastMessagePreview(contactUID) {
-    if (!messagesData[contactUID] || messagesData[contactUID].length === 0) return null;
-    return messagesData[contactUID][0]; // Return most recent message
-}
-
-function formatTime(date) {
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-}
-
-function formatDate(date) {
-    return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
-}
-
-async function openChat(contact) {
-    currentChatUID = contact.uid;
-    messagesContainer.innerHTML = "";
-    unreadMessages[contact.uid] = 0;
-    updateContactUI();
-
-    // Update UI
-    noChatSelected.style.display = "none";
-    activeChat.style.display = "flex";
-    chatNameElement.textContent = contact.username || contact.uid;
-    
-    // Set chat avatar
-    const firstLetter = contact.username?.charAt(0).toUpperCase() || "?";
-    chatAvatarElement.textContent = firstLetter;
-    const colors = ['#6e8efb', '#a777e3', '#4CAF50', '#FF5722', '#607D8B'];
-    const colorIndex = contact.username?.length % colors.length || 0;
-    chatAvatarElement.style.background = colors[colorIndex];
-
-    // Load and render messages
-    const messages = await loadMessages(contact.uid);
-    messagesData[contact.uid] = messages;
-    renderMessages(messages);
-}
-
-async function loadMessages(contactUID, getLastOnly = false) {
-    try {
-        const user = getCurrentUser();
-        if (!user?.token) throw new Error("User not authenticated");
-
-        let url = `${BACKEND_URL}/messages/${contactUID}`;
-        if (getLastOnly) url += '?limit=1';
-
-        const response = await fetch(url, {
-            headers: { Authorization: `Bearer ${user.token}` },
-        });
-
-        if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
-
-        const messages = await response.json();
-        return Array.isArray(messages) ? messages : [];
-    } catch (error) {
-        console.error("❌ Failed to load messages:", error);
-        return [];
-    }
-}
-
-function renderMessages(messages) {
-    messagesContainer.innerHTML = "";
-    
-    // Group messages by date
-    const groupedMessages = groupMessagesByDate(messages);
-    
-    // Render each group
-    Object.entries(groupedMessages).forEach(([date, messages]) => {
-        // Add date separator
-        const dateDivider = document.createElement("div");
-        dateDivider.classList.add("date-divider");
-        dateDivider.textContent = date;
-        messagesContainer.appendChild(dateDivider);
-        
-        // Render messages for this date
-        messages.forEach(message => {
-            renderMessage(message);
-        });
-    });
-
-    // Scroll to bottom
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
-}
-
-function groupMessagesByDate(messages) {
-    const groups = {};
-    
-    messages.forEach(message => {
-        const messageDate = new Date(message.timestamp || Date.now());
-        const dateKey = formatDate(messageDate);
-        
-        if (!groups[dateKey]) {
-            groups[dateKey] = [];
-        }
-        
-        groups[dateKey].push(message);
-    });
-    
-    return groups;
-}
-
-function renderMessage(message) {
-    const messageDiv = document.createElement("div");
-    messageDiv.classList.add("message", message.sender === getCurrentUser().uid ? "sent" : "received");
-    
-    const timeString = formatTime(new Date(message.timestamp || Date.now()));
-    
-    messageDiv.innerHTML = `
-        <div class="message-content">${message.text}</div>
-        <div class="message-time">${timeString}</div>
-    `;
-    
-    messagesContainer.appendChild(messageDiv);
-}
 
 function setupWebSocket(user) {
     ws = new WebSocket(`wss://chat-project-2.onrender.com/ws`);
@@ -317,29 +166,10 @@ async function sendMessage() {
         const user = getCurrentUser();
         if (!user) throw new Error("User not authenticated");
 
-        // Create message object
-        const message = {
-            text,
-            sender: user.uid,
-            receiver: currentChatUID,
-            timestamp: new Date().toISOString()
-        };
+        // Send message via WebSocket
+        ws.send(JSON.stringify({ type: "message", text, sender: user.uid, receiver: currentChatUID }));
 
-        // Send via WebSocket
-        ws.send(JSON.stringify({ 
-            type: "message", 
-            ...message 
-        }));
-
-        // Add to local data and render
-        if (!messagesData[currentChatUID]) {
-            messagesData[currentChatUID] = [];
-        }
-        messagesData[currentChatUID].unshift(message);
-        renderMessage(message);
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-
-        // Clear input
+        // Clear input field
         messageInput.value = "";
     } catch (error) {
         console.error("❌ Failed to send message:", error);
@@ -370,3 +200,43 @@ function updateContactUI() {
         }
     });
 }
+
+// Function to show typing indicator
+function showTypingIndicator(senderUID) {
+    if (senderUID === currentChatUID) {
+        typingIndicator.style.display = "block";
+        setTimeout(() => {
+            typingIndicator.style.display = "none";
+        }, 2000); // Hide after 2s
+    }
+}
+
+function renderContacts(contacts) {
+  contactsContainer.innerHTML = "";
+  contacts.forEach(contact => {
+      const contactItem = document.createElement("div");
+      contactItem.classList.add("contact-item");
+      contactItem.dataset.uid = contact.uid; // ✅ Correctly set UID
+      contactItem.innerHTML = `
+          <span>${contact.username || "Unknown"}</span> <!-- Avoid undefined -->
+          <span class="unread-count" style="display: none;"></span>
+      `;
+      contactItem.addEventListener("click", () => openChat({ uid: contact.uid, username: contact.username })); // ✅ Pass correct object
+      contactsContainer.appendChild(contactItem);
+  });
+
+}
+
+// Function to render messages
+function renderMessage(message) {
+    const messageDiv = document.createElement("div");
+    messageDiv.classList.add("message", message.sender === getCurrentUser().uid ? "sent" : "received");
+    messageDiv.textContent = message.text;
+    messagesContainer.prepend(messageDiv);
+    
+
+}
+
+
+// Initialize chat on page load
+initChat();
