@@ -12,7 +12,7 @@ app = FastAPI()
 # ✅ CORS Middleware (Allow Frontend)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://frontend-g2ure5v3x-fares-projects-d76a0c1b.vercel.app"],
+    allow_origins=["https://frontend-7snrdsph8-fares-projects-d76a0c1b.vercel.app"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -299,16 +299,20 @@ async def remove_contact(uid: str, contact_data: dict):
     return {"message": "Contact removed successfully"}
 
 # 🔥 Fetch Messages (REST API)
-@app.get("/messages/{user_id}")
-async def get_messages(user_id: str):
-    """Retrieves chat history for a user."""
+# Modified endpoint
+@app.get("/messages/{user_id}/{contact_id}")
+async def get_messages(user_id: str, contact_id: str):
+    """Retrieves chat history between two users."""
     messages = []
-
-    # ✅ Fetch Messages (Sent & Received)
-    messages_ref = db.collection("messages").where("receiver", "==", user_id).stream()
-    sent_messages_ref = db.collection("messages").where("sender", "==", user_id).stream()
-
-    for msg in messages_ref:
+    
+    # Get messages where user_id sent to contact_id
+    sent_messages = db.collection("messages").where("sender", "==", user_id).where("receiver", "==", contact_id).stream()
+    
+    # Get messages where contact_id sent to user_id
+    received_messages = db.collection("messages").where("sender", "==", contact_id).where("receiver", "==", user_id).stream()
+    
+    # Process sent messages
+    for msg in sent_messages:
         data = msg.to_dict()
         messages.append({
             "sender": data["sender"],
@@ -316,8 +320,9 @@ async def get_messages(user_id: str):
             "text": decrypt_message(data["message"]),
             "timestamp": data["timestamp"]
         })
-
-    for msg in sent_messages_ref:
+    
+    # Process received messages
+    for msg in received_messages:
         data = msg.to_dict()
         messages.append({
             "sender": data["sender"],
@@ -325,7 +330,8 @@ async def get_messages(user_id: str):
             "text": decrypt_message(data["message"]),
             "timestamp": data["timestamp"]
         })
-
+    
+    # Sort messages by timestamp
     messages.sort(key=lambda x: x["timestamp"], reverse=True)
     return messages
 
