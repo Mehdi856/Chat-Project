@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WebChat</title>
+  <link rel="stylesheet" href="styles.css">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app-container">
+    <header>
+      <div class="user-profile">
+        <div class="user-avatar" id="user-avatar"></div>
+        <span id="user-info">Loading...</span>
+      </div>
+      <h1>WebChat</h1>
+      <button id="logout-btn">Logout</button>
+    </header>
+
+    <!-- Chat Container -->
+    <div class="chat-container">
+      <!-- Sidebar with contacts -->
+      <div class="sidebar">
+        <div class="search-container">
+          <input type="text" id="search-contact" placeholder="Search contacts...">
+        </div>
+
+        <!-- Add contact form -->
+        <div class="contact-actions">
+          <input type="text" id="contact-uid-input" placeholder="Enter contact UID...">
+          <div class="contact-buttons">
+            <button id="add-contact-btn">Add</button>
+            <button id="delete-contact-btn">Delete</button>
+          </div>
+        </div>
+        
+        <div class="contacts-list" id="contacts-list">
+          <!-- Contacts will be loaded dynamically -->
+        </div>
+      </div>
+
+      <!-- Main chat area -->
+      <div class="chat-main">
+        <!-- Initially show welcome message -->
+        <div class="no-chat-selected" id="no-chat-selected">
+          <div class="no-chat-icon">💬</div>
+          <div class="no-chat-message">
+            Select a contact to start chatting
+          </div>
+        </div>
+
+        <!-- Active chat interface (hidden initially) -->
+        <div id="active-chat" style="display: none; flex-direction: column; height: 100%;">
+          <div class="chat-header">
+            <div class="back-button" id="back-button">🡰</div>
+            <div class="chat-contact">
+              <div class="contact-avatar" id="chat-avatar"></div>
+              <div class="contact-info">
+                <div class="contact-name" id="chat-name"></div>
+                <span class="typing-indicator" id="typing-indicator"></span>
+              </div>
+            </div>
+            <div class="chat-actions">
+              <!-- Chat action buttons can be added here -->
+            </div>
+          </div>
+
+          <div class="messages-container" id="messages-container">
+            <!-- Messages will be loaded dynamically -->
+          </div>
+
+          <div class="message-input-container">
+            <input type="text" id="message-input" placeholder="Type a message...">
+            <button id="send-btn"></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Import scripts -->
+  <script type="module" src="firebase.js"></script>
+  <script type="module" src="auth.js"></script>
+  <script type="module" src="chat.js"></script>
+</body>
+</html>
