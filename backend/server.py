@@ -66,11 +66,13 @@ async def register_user(user_data: dict):
         user = auth.create_user(email=email, password=password, display_name=name)
         
         # Store user in Firestore
+        # When a user registers, add the 'groups' field
         db.collection("users").document(user.uid).set({
             "name": name,
             "email": email,
             "uid": user.uid,
-            "contacts": []
+            "contacts": [],
+            "groups": []  # New field to store group IDs
         })
 
         return {"message": "User registered successfully!", "uid": user.uid}
@@ -334,4 +336,38 @@ async def get_messages(user_id: str, contact_id: str):
     # Sort messages by timestamp
     messages.sort(key=lambda x: x["timestamp"], reverse=True)
     return messages
+
+    # 🔥 Create Group
+    @app.post("/create_group")
+    async def create_group(uid: str, group_data: dict):
+        """Creates a new group and adds members."""
+        group_name = group_data.get("group_name")
+        members = group_data.get("members", [])
+
+        if not group_name or not members:
+            raise HTTPException(status_code=400, detail="Missing group name or members list")
+
+        # Ensure the creator is included as a member
+        if uid not in members:
+            members.append(uid)
+
+        # Create a new group document in Firestore
+        group_ref = db.collection("groups").add({
+            "group_name": group_name,
+            "members": members,
+            "created_by": uid,
+            "timestamp": firestore.SERVER_TIMESTAMP
+        })
+
+        # Fetch the newly created group ID
+        group_id = group_ref.id
+
+        # Store the group ID in each member's Firestore document (if necessary)
+        for member_uid in members:
+            user_ref = db.collection("users").document(member_uid)
+            user_ref.update({
+                "groups": firestore.ArrayUnion([group_id])
+            })
+
+        return {"message": "Group created successfully!", "group_id": group_id}
 
