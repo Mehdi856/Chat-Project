@@ -1066,3 +1066,53 @@ button:hover {
 ::-webkit-scrollbar-thumb:hover {
   background: #a8a8a8;
 }
+/**/
+.contact-actions {
+  padding: 10px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+#contact-uid-input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  margin-bottom: 8px;
+  font-family: 'Poppins', sans-serif;
+}
+
+.contact-buttons {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.contact-buttons button {
+  flex: 1;
+  padding: 6px 0;
+  background-color: #6e8efb;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  font-family: 'Poppins', sans-serif;
+}
+
+.contact-buttons button:hover {
+  background-color: #5a7be0;
+}
+
+#delete-contact-btn {
+  background-color: #ff5252;
+}
+
+#delete-contact-btn:hover {
+  background-color: #e04545;
+}
+
+.back-button {
+  padding: 5px 10px;
+  cursor: pointer;
+  font-size: 18px;
+}

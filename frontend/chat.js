@@ -16,6 +16,10 @@ const noChatSelected = document.getElementById("no-chat-selected");
 const activeChat = document.getElementById("active-chat");
 const chatNameElement = document.getElementById("chat-name");
 const chatAvatarElement = document.getElementById("chat-avatar");
+const contactUidInput = document.getElementById("contact-uid-input");
+const addContactBtn = document.getElementById("add-contact-btn");
+const deleteContactBtn = document.getElementById("delete-contact-btn");
+const backButton = document.getElementById("back-button");
 
 // State
 let currentChatUID = null;
@@ -159,7 +163,8 @@ async function loadMessages(contactUID, getLastOnly = false) {
         const user = getCurrentUser();
         if (!user?.token) throw new Error("User not authenticated");
 
-        let url = `${BACKEND_URL}/messages/${contactUID}`;
+        // Updated URL to include both user.uid and contactUID
+        let url = `${BACKEND_URL}/messages/${user.uid}/${contactUID}`;
         if (getLastOnly) url += '?limit=1';
 
         const response = await fetch(url, {
@@ -182,16 +187,22 @@ function renderMessages(messages) {
     // Group messages by date
     const groupedMessages = groupMessagesByDate(messages);
     
-    // Render each group
-    Object.entries(groupedMessages).forEach(([date, messages]) => {
+    // Get dates and sort them chronologically (oldest first)
+    const sortedDates = Object.keys(groupedMessages).sort((a, b) => {
+        // Convert date strings to Date objects for comparison
+        return new Date(a) - new Date(b);
+    });
+    
+    // Render each group in chronological order
+    sortedDates.forEach(date => {
         // Add date separator
         const dateDivider = document.createElement("div");
         dateDivider.classList.add("date-divider");
         dateDivider.textContent = date;
         messagesContainer.appendChild(dateDivider);
         
-        // Render messages for this date
-        messages.reverse().forEach(message => {
+        // Render messages for this date in chronological order (without reverse)
+        groupedMessages[date].forEach(message => {
             renderMessage(message);
         });
     });
@@ -203,7 +214,12 @@ function renderMessages(messages) {
 function groupMessagesByDate(messages) {
     const groups = {};
     
-    messages.forEach(message => {
+    // Sort all messages by timestamp (oldest first)
+    const sortedMessages = [...messages].sort((a, b) => {
+        return new Date(a.timestamp || 0) - new Date(b.timestamp || 0);
+    });
+    
+    sortedMessages.forEach(message => {
         const messageDate = new Date(message.timestamp || Date.now());
         const dateKey = formatDate(messageDate);
         
@@ -216,6 +232,8 @@ function groupMessagesByDate(messages) {
     
     return groups;
 }
+    
+ 
 
 function renderMessage(message) {
     const messageDiv = document.createElement("div");
@@ -279,6 +297,25 @@ function handleNewMessage(message) {
         unreadMessages[message.sender] = (unreadMessages[message.sender] || 0) + 1;
         updateContactUI();
     }
+    //update ui
+    updateContactUI();
+    // Also update contact preview
+    updateContactPreviews();
+}
+function updateContactPreviews() {
+    document.querySelectorAll(".contact-item").forEach(item => {
+        const uid = item.dataset.uid;
+        const lastMessage = getLastMessagePreview(uid);
+        
+        if (lastMessage) {
+            const previewEl = item.querySelector(".contact-preview");
+            const timeEl = item.querySelector(".message-time");
+            
+            previewEl.textContent = lastMessage.text || "No messages yet";
+            timeEl.textContent = lastMessage.timestamp ? 
+                formatTime(new Date(lastMessage.timestamp)) : "";
+        }
+    });
 }
 
 function setupEventListeners() {
@@ -288,6 +325,16 @@ function setupEventListeners() {
         if (e.key === "Enter") sendMessage();
     });
 
+    // Contact management
+    addContactBtn.addEventListener("click", addContact);
+    deleteContactBtn.addEventListener("click", deleteContact);
+
+    // Back button
+    backButton.addEventListener("click", () => {
+        noChatSelected.style.display = "flex";
+        activeChat.style.display = "none";
+        currentChatUID = null;
+    });
     // Typing indicator
     let typingTimeout;
     messageInput.addEventListener("input", () => {
@@ -369,4 +416,69 @@ function updateContactUI() {
             unreadBadge.style.display = "none";
         }
     });
+}
+async function addContact() {
+    const user = getCurrentUser();
+    const contactUID = contactUidInput.value.trim();
+    
+    if (!user || !user.token || !contactUID) {
+        alert("Invalid user or empty UID!");
+        return;
+    }
+
+    try {
+        // Use the current user's UID in the URL, not the contact's UID
+        const response = await fetch(`${BACKEND_URL}/contacts/${user.uid}`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${user.token}`
+            },
+            body: JSON.stringify({ contact_uid: contactUID })
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to add contact: ${response.statusText}`);
+        }
+
+        alert("✅ Contact added successfully!");
+        contactUidInput.value = ""; // Clear input field
+        await loadContacts(); // Refresh contacts list
+    } catch (error) {
+        console.error("❌ Error adding contact:", error);
+        alert("Failed to add contact. Try again.");
+    }
+}
+
+async function deleteContact() {
+    const user = getCurrentUser();
+    const contactUID = contactUidInput.value.trim();
+    
+    if (!user || !user.token || !contactUID) {
+        alert("Invalid user or empty UID!");
+        return;
+    }
+
+    try {
+        // Use the current user's UID in the URL, not the contact's UID
+        const response = await fetch(`${BACKEND_URL}/contacts/${user.uid}`, {
+            method: "DELETE",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${user.token}`
+            },
+            body: JSON.stringify({ contact_uid: contactUID })
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to delete contact: ${response.statusText}`);
+        }
+
+        alert("🗑️ Contact deleted successfully!");
+        contactUidInput.value = ""; // Clear input field
+        await loadContacts(); // Refresh contacts list
+    } catch (error) {
+        console.error("❌ Error deleting contact:", error);
+        alert("Failed to delete contact. Try again.");
+    }
 }
