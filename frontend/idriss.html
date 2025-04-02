@@ -9,11 +9,12 @@
 </head>
 <body>
   <div class="app-container">
-    <header>
+    <header >
       <div class="user-profile">
         <div class="user-avatar" id="user-avatar"></div>
         <span id="user-info">Loading...</span>
       </div>
+      <p id="desplay-uid"></p>
       <h1>WebChat</h1>
       <button id="logout-btn">Logout</button>
     </header>
@@ -25,15 +26,6 @@
         <div class="search-container">
           <input type="text" id="search-contact" placeholder="Search contacts...">
         </div>
-
-        <!-- Add contact form -->
-        <div class="contact-actions">
-          <input type="text" id="contact-uid-input" placeholder="Enter contact UID...">
-          <div class="contact-buttons">
-            <button id="add-contact-btn">Add</button>
-            <button id="delete-contact-btn">Delete</button>
-          </div>
-        </div>
         
         <div class="contacts-list" id="contacts-list">
           <!-- Contacts will be loaded dynamically -->
@@ -43,15 +35,32 @@
       <!-- Main chat area -->
       <div class="chat-main">
         <!-- Initially show welcome message -->
-        <div class="no-chat-selected" id="no-chat-selected">
-          <div class="no-chat-icon">💬</div>
-          <div class="no-chat-message">
-            Select a contact to start chatting
-          </div>
+        <div id="no-chat-selected">
+          <h2>Select a chat</h2>
+          <p>Choose a contact from the sidebar to start messaging</p>
+          <button id="contact-btn">Add New Contact</button>
+          <button id="Create-group">Create group</button>
         </div>
-
+        <!-- New contact form (hidden initially) -->
+        <div id="New-contact" style="display: none; ">
+          <div class="back-button" id="back-button">🡰</div>
+          <h1>Add Contact</h1>
+          <div id="contact-uid-container">
+            <input type="text" id="contact-uid-input" placeholder="Enter user UID .... " />
+          </div>
+          <button id="add-contact-btn">Add</button>
+        </div>
+        <!-- Group creation form (hidden initially) -->
+        <div id="New-group" style="display: none; ">
+          <div class="back-button" id="back-button">🡰</div>
+          <h1>Create Group</h1>
+          <div id="group-name-container">
+            <input type="text" id="group-name-input" placeholder="Enter group name .... " />
+          </div>
+          <button id="create-group-btn">Create</button>
+        </div>
         <!-- Active chat interface (hidden initially) -->
-        <div id="active-chat" style="display: none; flex-direction: column; height: 100%;">
+        <div id="active-chat" >
           <div class="chat-header">
             <div class="back-button" id="back-button">🡰</div>
             <div class="chat-contact">
@@ -59,6 +68,13 @@
               <div class="contact-info">
                 <div class="contact-name" id="chat-name"></div>
                 <span class="typing-indicator" id="typing-indicator"></span>
+              </div>
+            </div>
+            <div class="menu-container">
+              <button class="menu-button">⋮</button>
+              <div class="menu-dropdown">
+                <button class="delete-contact-btn">Delete Chat</button>
+                <!-- Add more menu items if needed -->
               </div>
             </div>
             <div class="chat-actions">
@@ -80,6 +96,36 @@
   </div>
 
   <!-- Import scripts -->
+   <script>
+    document.getElementById("contact-btn").addEventListener("click", () => {
+      document.getElementById("no-chat-selected").style.display = "none";
+      document.getElementById("New-contact").style.display = "flex";
+    });
+   </script>
+    <script>
+      document.getElementById("Create-group").addEventListener("click", () => {
+        document.getElementById("no-chat-selected").style.display = "none";
+        document.getElementById("New-group").style.display = "flex";
+      });
+    </script>
+   <!-- Display user UID in the header -->
+   <script>
+    document.getElementById("display-uid").textContent = `UID: ${user.uid}`;
+   </script>
+   <script>
+      const menuButton = document.querySelector('.menu-button');
+      const dropdown = document.querySelector('.menu-dropdown');
+      
+      menuButton.addEventListener('click', function(e) {
+        e.stopPropagation();
+        dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+      });
+      
+      document.addEventListener('click', function() {
+        dropdown.style.display = 'none';
+      });
+   </script>
+
   <script type="module" src="firebase.js"></script>
   <script type="module" src="auth.js"></script>
   <script type="module" src="chat.js"></script>
