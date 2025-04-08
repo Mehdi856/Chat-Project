@@ -1172,3 +1172,317 @@ button:hover {
 .delete-contact-btn:hover {
   background: #f5f5f5;
 }
+/* Contact UID displays */
+#display-uid {
+  font-size: 14px;
+  color: #ffffff;
+  opacity: 0.8;
+  text-align: center;
+  margin: 5px 0;
+}
+
+#contact-uid {
+  font-size: 12px;
+  color: #777;
+  margin-top: 2px;
+}
+
+/* Menu dropdown styling improvements */
+.menu-container {
+  position: relative;
+  margin-left: auto;
+}
+
+.menu-button {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 0 10px;
+  color: #555;
+}
+
+.menu-dropdown {
+  display: none;
+  position: absolute;
+  right: 0;
+  top: 100%;
+  background: white;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+  border-radius: 8px;
+  overflow: hidden;
+  z-index: 100;
+  min-width: 160px;
+}
+
+#delete-contact-btn {
+  padding: 12px 16px;
+  border: none;
+  background: none;
+  color: #ff5252;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  font-family: 'Poppins', sans-serif;
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+
+#delete-contact-btn:hover {
+  background: #f5f5f5;
+}
+
+/* Back button styles */
+.back-button {
+  padding: 5px 10px;
+  cursor: pointer;
+  font-size: 18px;
+  color: #555;
+  display: flex;
+  align-items: center;
+}
+
+/* Chat header styling */
+.chat-header {
+  display: flex;
+  align-items: center;
+  padding: 15px;
+  background-color: white;
+  border-bottom: 1px solid #eaeaea;
+}
+
+.chat-contact {
+  display: flex;
+  flex: 1;
+}
+
+.contact-info {
+  margin-left: 15px;
+}
+
+#New-contact, #New-group {
+  display: none;
+  flex-direction: column;
+  padding: 20px;
+  align-items: center;
+}
+
+#contact-uid-input, #group-name-input {
+  width: 100%;
+  max-width: 300px;
+  padding: 12px;
+  margin: 20px 0;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-family: 'Poppins', sans-serif;
+}
+
+#add-contact-btn, #create-group-btn {
+  padding: 10px 20px;
+  background: linear-gradient(135deg, #6e8efb, #a777e3);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+#add-contact-btn:hover, #create-group-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(110, 142, 251, 0.4);
+}
+/* Notification bell styles */
+.notification-container {
+  position: relative;
+  margin-right: 15px;
+}
+
+.notification-bell {
+  font-size: 22px;
+  cursor: pointer;
+  position: relative;
+  padding: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.notification-count {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background-color: #ff5252;
+  color: white;
+  font-size: 12px;
+  height: 18px;
+  width: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-weight: bold;
+}
+
+/* Notification panel */
+.notification-panel {
+  position: absolute;
+  top: 70px;
+  right: 20px;
+  width: 320px;
+  max-height: 400px;
+  background-color: white;
+  border-radius: 10px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+  z-index: 1000;
+  overflow: hidden;
+}
+
+.notification-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 15px;
+  border-bottom: 1px solid #eaeaea;
+}
+
+.notification-header h3 {
+  margin: 0;
+  font-size: 16px;
+  color: #333;
+}
+
+#close-notification-btn {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  color: #777;
+}
+
+.notification-list {
+  overflow-y: auto;
+  max-height: 350px;
+}
+
+.notification-item {
+  padding: 15px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.notification-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 5px;
+}
+
+.notification-title {
+  font-weight: 600;
+  color: #333;
+}
+
+.notification-time {
+  font-size: 12px;
+  color: #888;
+}
+
+.notification-content {
+  margin-bottom: 10px;
+  font-size: 14px;
+  color: #555;
+}
+
+.notification-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.accept-btn, .decline-btn {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-family: 'Poppins', sans-serif;
+  font-size: 13px;
+  transition: all 0.2s ease;
+}
+
+.accept-btn {
+  background-color: #4CAF50;
+  color: white;
+}
+
+.decline-btn {
+  background-color: #ff5252;
+  color: white;
+}
+
+.accept-btn:hover {
+  background-color: #45a049;
+}
+
+.decline-btn:hover {
+  background-color: #e04545;
+}
+
+.notification-empty {
+  padding: 20px;
+  text-align: center;
+  color: #888;
+  font-size: 14px;
+}
+
+/* Styling for unread message indicators in contacts */
+.unread-count {
+  background-color: #6e8efb;
+  color: white;
+  border-radius: 50%;
+  min-width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: bold;
+  margin-left: auto;
+}
+
+/* Date divider styling */
+.date-divider {
+  text-align: center;
+  padding: 10px 0;
+  font-size: 12px;
+  color: #888;
+  position: relative;
+  margin: 15px 0;
+}
+
+.date-divider:before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 42%;
+  height: 1px;
+  background-color: #eaeaea;
+}
+
+.date-divider:after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 50%;
+  width: 42%;
+  height: 1px;
+  background-color: #eaeaea;
+}
+
+/* Typing indicator styling */
+.typing-indicator {
+  font-size: 13px;
+  color: #777;
+  font-style: italic;
+  display: none;
+}
