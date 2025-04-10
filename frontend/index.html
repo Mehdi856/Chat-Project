@@ -6,25 +6,30 @@
   <title>WebChat</title>
   <link rel="stylesheet" href="styles.css">
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
   <div class="app-container">
     <header>
       <div class="user-profile">
+        <div class="notification-container">
+          <div class="notification-bell" id="notification-bell">
+            <i class="fas fa-bell"></i>
+            <span class="notification-count" id="notification-count">0</span>
+          </div>
+        </div>
+        
         <div class="user-avatar" id="user-avatar">
           <div class="avatar-skeleton"></div>
         </div>
-        <span id="user-info" class="text-skeleton"></span>
-      </div>
-      <p id="display-uid"></p>
-      <h1>WebChat</h1>
-      <!-- Notification bell -->
-      <div class="notification-container">
-        <div class="notification-bell" id="notification-bell">
-          🔔
-          <span class="notification-count" id="notification-count">0</span>
+        <div class="user-info-container">
+          <span id="user-info" class="text-skeleton"></span>
+          <p id="display-uid"></p>
         </div>
       </div>
+      
+      <h1>WebChat</h1>
+      
       <button id="logout-btn">Logout</button>
     </header>
 
