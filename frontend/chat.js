@@ -58,14 +58,20 @@ async function initChat() {
 }
 
 function updateUserHeader(user) {
-    if (user && user.username) {
-        userInfoElement.textContent = user.username;
-        const firstLetter = user.username.charAt(0).toUpperCase();
+    if (user && user.name) {  // Changed from user.username to user.name
+        userInfoElement.textContent = user.name;  // Display the user's name
+        const firstLetter = user.name.charAt(0).toUpperCase();  // Get first letter of name
         userAvatarElement.textContent = firstLetter;
         
+        // Generate a color based on the name
         const colors = ['#6e8efb', '#a777e3', '#4CAF50', '#FF5722', '#607D8B'];
-        const colorIndex = user.username.length % colors.length;
+        const colorIndex = user.name.length % colors.length;
         userAvatarElement.style.background = colors[colorIndex];
+    } else {
+        // Fallback if name isn't available
+        userInfoElement.textContent = "User";
+        userAvatarElement.textContent = "U";
+        userAvatarElement.style.background = '#6e8efb';
     }
 }
 

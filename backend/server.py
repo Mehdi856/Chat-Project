@@ -81,6 +81,7 @@ async def register_user(user_data: dict):
         raise HTTPException(status_code=400, detail=str(e))
 
 
+
 # ✅ Login User
 @app.post("/login")
 async def login_user(user_data: dict):
@@ -93,15 +94,25 @@ async def login_user(user_data: dict):
 
     try:
         user = auth.get_user_by_email(email)
-        # Firebase Authentication automatically handles password verification
+        # Get user's name from Firestore
+        user_doc = db.collection("users").document(user.uid).get()
+        if not user_doc.exists:
+            raise HTTPException(status_code=404, detail="User data not found")
+        
+        user_data = user_doc.to_dict()
+        name = user_data.get("name", "User")  #  if name not found it puts User left for testing
 
         # Generate a custom token (Firebase handles authentication)
         custom_token = auth.create_custom_token(user.uid)
 
-        return {"message": "Login successful!", "uid": user.uid, "token": custom_token.decode("utf-8")}
+        return {
+            "message": "Login successful!",
+            "uid": user.uid,
+            "token": custom_token.decode("utf-8"),
+            "name": name  # Add name to response
+        }
     except Exception as e:
         raise HTTPException(status_code=400, detail="Invalid email or password.")
-
 
 # ✅ Logout User
 @app.post("/logout")

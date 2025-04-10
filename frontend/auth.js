@@ -126,11 +126,13 @@ async function loginUser(email, password) {
     const idToken = await user.getIdToken();
     const userData = { 
       email,
-      uid: data.uid,         // 🔥 Store UID from backend 
+      uid: data.uid,        // 🔥 Store UID from backend 
+      name: data.name,      // 🔥 Store name from backend
       customToken: data.token,  // Backend custom token
       idToken: idToken          // Firebase ID token
     }
-    // 3️⃣ Store both tokens
+    
+    // 3️⃣ Store all user data
     localStorage.setItem("user", JSON.stringify(userData));
     console.log("✅ User saved to localStorage:", userData);
     window.location.href = "index.html";
@@ -144,15 +146,17 @@ async function loginUser(email, password) {
 
 
 // Get current user from localStorage
+// Get current user from localStorage
 function getCurrentUser() {
   const user = JSON.parse(localStorage.getItem("user"));
-    if (!user || !user.idToken || !user.uid) return null; // 🔥 Ensure `uid` is present
+    if (!user || !user.idToken || !user.uid) return null;
 
     return {
         email: user.email,
-        uid: user.uid,      // ✅ Return UID
-        token: user.idToken, // ✅ Firebase ID token
-        customToken: user.customToken // ✅ Backend custom token
+        uid: user.uid,
+        name: user.name,      // Add name to returned object
+        token: user.idToken,
+        customToken: user.customToken
     };
 }
 
