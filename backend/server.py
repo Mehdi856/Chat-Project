@@ -215,38 +215,36 @@ async def websocket_endpoint(websocket: WebSocket):
         await websocket.close(code=1011)
 
 
-# ✅ Get Contacts
 @app.get("/contacts/{uid}")
 async def get_contacts(uid: str, request: Request):
-    """Retrieves the contact list of a user, including names and UIDs."""
+    """Retrieves the contact list of a user, including names and usernames."""
     # Verify the token from Authorization header
     token = request.headers.get("Authorization", "").replace("Bearer ", "")
     if not token or not verify_token(token):
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     user_ref = db.collection("users").document(uid).get()
-    
+
     if not user_ref.exists:
         raise HTTPException(status_code=404, detail="User not found")
 
     user_data = user_ref.to_dict()
-    contact_uids = user_data.get("contacts", [])
+    contact_usernames = user_data.get("contacts", [])
 
-    # ✅ Fetch full user details for each contact
+    # ✅ Fetch full user details for each contact using their username
     contacts = []
-    for contact_uid in contact_uids:
-        contact_ref = db.collection("users").document(contact_uid).get()
-        if contact_ref.exists:
-            contact_data = contact_ref.to_dict()
+    for contact_username in contact_usernames:
+        contact_ref = db.collection("users").where("username", "==", contact_username).limit(1).get()
+        if contact_ref:
+            contact_data = contact_ref[0].to_dict()
             contacts.append({
-                "uid": contact_uid,
-                "username": contact_data.get("name", "Unknown")
+                "username": contact_username,
+                "name": contact_data.get("name", "Unknown")
             })
 
     return {"contacts": contacts}
 
 
-# ✅ Add Contact (now with contact request)
 @app.post("/contacts/{uid}")
 async def add_contact(uid: str, contact_data: dict, request: Request):
     """Creates a contact request. The contact is added only after acceptance."""
@@ -255,42 +253,43 @@ async def add_contact(uid: str, contact_data: dict, request: Request):
     if not token or not verify_token(token):
         raise HTTPException(status_code=401, detail="Unauthorized")
 
-    contact_uid = contact_data.get("contact_uid")
-    
-    if not contact_uid:
-        raise HTTPException(status_code=400, detail="Missing contact UID")
+    contact_username = contact_data.get("contact_username")
 
-    # Check if users exist
+    if not contact_username:
+        raise HTTPException(status_code=400, detail="Missing contact username")
+
+    # Check if users exist by username
     user_ref = db.collection("users").document(uid).get()
-    contact_ref = db.collection("users").document(contact_uid).get()
+    contact_ref = db.collection("users").where("username", "==", contact_username).limit(1).get()
 
-    if not user_ref.exists or not contact_ref.exists:
+    if not user_ref.exists or not contact_ref:
         raise HTTPException(status_code=404, detail="User or contact not found")
 
     user_data = user_ref.to_dict()
     contacts = user_data.get("contacts", [])
 
-    if contact_uid == uid:
+    if contact_username == user_data.get("username"):
         raise HTTPException(status_code=400, detail="Cannot add yourself as a contact")
 
-    if contact_uid in contacts:
+    # Check if contact already exists
+    if contact_username in contacts:
         raise HTTPException(status_code=400, detail="Contact already added")
 
     # Generate unique request ID
     request_id = str(uuid.uuid4())
-    
+
     # Store request in Firestore
     db.collection("contact_requests").document(request_id).set({
         "request_id": request_id,
         "sender": uid,
         "sender_name": user_data.get("name", "Unknown"),
-        "receiver": contact_uid,
+        "receiver": contact_ref[0].id,  # Get the user ID of the contact
         "status": "pending",
         "timestamp": firestore.SERVER_TIMESTAMP
     })
 
     # Notify the receiver via WebSocket if they're online
-    await websocket_manager.send_notification(contact_uid, {
+    await websocket_manager.send_notification(contact_ref[0].id, {
         "type": "notification",
         "notification_type": "contact_request",
         "sender": uid,
@@ -301,7 +300,6 @@ async def add_contact(uid: str, contact_data: dict, request: Request):
     return {"message": "Contact request sent successfully"}
 
 
-# ✅ Remove Contact
 @app.delete("/contacts/{uid}")
 async def remove_contact(uid: str, contact_data: dict, request: Request):
     """Removes a contact from the user's contact list."""
@@ -310,11 +308,12 @@ async def remove_contact(uid: str, contact_data: dict, request: Request):
     if not token or not verify_token(token):
         raise HTTPException(status_code=401, detail="Unauthorized")
 
-    contact_uid = contact_data.get("contact_uid")
+    contact_username = contact_data.get("contact_username")
 
-    if not contact_uid:
-        raise HTTPException(status_code=400, detail="Missing contact UID")
+    if not contact_username:
+        raise HTTPException(status_code=400, detail="Missing contact username")
 
+    # Check if users exist
     user_ref = db.collection("users").document(uid)
     user_doc = user_ref.get()
 
@@ -324,26 +323,31 @@ async def remove_contact(uid: str, contact_data: dict, request: Request):
     user_data = user_doc.to_dict()
     contacts = user_data.get("contacts", [])
 
-    if contact_uid not in contacts:
+    # Check if the contact exists by username
+    contact_ref = db.collection("users").where("username", "==", contact_username).limit(1).get()
+
+    if not contact_ref:
         raise HTTPException(status_code=400, detail="Contact not found")
 
+    contact_uid = contact_ref[0].id  # Get the contact's UID from the result
+
+    if contact_username not in contacts:
+        raise HTTPException(status_code=400, detail="Contact not in contact list")
+
     # Remove contact from user's contacts
-    contacts.remove(contact_uid)
+    contacts.remove(contact_username)
     user_ref.update({"contacts": contacts})
 
     # Also remove user from contact's contacts list (two-way removal)
-    contact_ref = db.collection("users").document(contact_uid)
-    contact_doc = contact_ref.get()
-    
-    if contact_doc.exists:
-        contact_data = contact_doc.to_dict()
-        contact_contacts = contact_data.get("contacts", [])
-        
-        if uid in contact_contacts:
-            contact_contacts.remove(uid)
-            contact_ref.update({"contacts": contact_contacts})
+    contact_data = contact_ref[0].to_dict()
+    contact_contacts = contact_data.get("contacts", [])
+
+    if uid in contact_contacts:
+        contact_contacts.remove(uid)
+        contact_ref[0].reference.update({"contacts": contact_contacts})
 
     return {"message": "Contact removed successfully"}
+
 
 
 # ✅ Get Messages
