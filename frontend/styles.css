@@ -645,6 +645,7 @@ header h1 {
   transition: all 0.3s ease;
   background: rgba(255, 255, 255, 0.1);
   border-radius: 30px;
+  border: 1.9px solid white;
   margin-right: 10px;
   grid-column: 1;
 }
@@ -783,9 +784,9 @@ header h1 {
   grid-column: 3;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   font-weight: 500;
-  height: 51px;
+  height: 54px;
   width: 150px; /* add your desired width */
-  border: 1.4px solid white;
+  border: 1.9px solid white;
   cursor: pointer;
   color: white;
 }
@@ -933,13 +934,13 @@ button:hover {
 .unread-count {
   position: absolute;
   right: 15px;
-  top: 50%;
+  top: 70%;
   transform: translateY(-50%);
   background-color: #6e8efb;
   color: white;
   border-radius: 50%;
-  min-width: 20px;
-  height: 20px;
+  min-width: 25px;
+  height: 25px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1584,4 +1585,162 @@ button:hover {
   0% { opacity: 0.4; }
   50% { opacity: 1; }
   100% { opacity: 0.4; }
+}
+
+/* Search bar with icon styling */
+.search-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-bottom: 15px;
+  background-color: #f7f7f7;
+  border-radius: 30px;
+  border: 1px solid #eaeaea;
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.search-wrapper input {
+  padding: 12px 16px;
+  padding-right: 50px;
+  transition: all 0.3s ease;
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-size: 14px;
+  outline: none;
+}
+
+.search-wrapper:focus-within {
+  border-color: #6e8efb;
+  box-shadow: 0 0 0 3px rgba(110, 142, 251, 0.1);
+  background-color: white;
+}
+
+.search-button {
+  position: absolute;
+  right: 8px;
+  top: 7%;
+  transform: translateY(-50%);
+  height: 34px;
+  width: 34px;
+  background: rgba(110, 142, 251, 0.15);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6e8efb;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  padding: 0;
+  box-shadow: none;
+  border-radius: 50%;
+}
+
+.search-button:hover {
+  background: rgba(110, 142, 251, 0.25);
+  transform: translateY(-50%) scale(1.05);
+}
+
+.search-button i {
+  font-size: 14px;
+}
+
+.tabs-container {
+  display: flex;
+  background: rgba(110, 142, 251, 0.1);
+  border-radius: 30px;
+  padding: 5px;
+  height: 48px;
+  margin-bottom: 15px;
+}
+
+.tab-button {
+  flex: 1;
+  padding: 7px 0;
+  margin-top: 0px;
+  background: none;
+  border: none;
+  border-radius: 25px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #777;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+  box-shadow: none;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tab-button:hover {
+  color: #6e8efb;
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+.tab-button.active {
+  background: linear-gradient(135deg, #6e8efb, #a777e3);
+  color: white;
+  box-shadow: 0 4px 15px rgba(110, 142, 251, 0.2);
+}
+
+/* Make search container match the same padding as tabs container */
+.search-container {
+  padding: 15px 15px 0 15px;
+  border-bottom: none;
+}
+
+/* Animation for tab switching */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.contacts-list, .groups-list {
+  animation: fadeIn 0.3s ease forwards;
+}
+
+/* Empty state styling for groups */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  color: #888;
+  text-align: center;
+}
+
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 15px;
+  color: #d0d0d0;
+  background: #f5f5f5;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.empty-state p {
+  font-size: 16px;
+  margin-bottom: 8px;
+  color: #555;
+  font-weight: 500;
+}
+
+.empty-state small {
+  color: #999;
+  max-width: 200px;
+  line-height: 1.5;
 }
