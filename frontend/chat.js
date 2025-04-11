@@ -32,6 +32,12 @@ const notificationPanel = document.getElementById("notification-panel");
 const notificationList = document.getElementById("notification-list");
 const closeNotificationBtn = document.getElementById("close-notification-btn");
 
+// Tab switching elements
+const dmsTab = document.getElementById("dms-tab");
+const groupsTab = document.getElementById("groups-tab");
+const contactsList = document.getElementById("contacts-list");
+const groupsList = document.getElementById("groups-list");
+
 // State
 let currentChatUID = null;
 let unreadMessages = {};
@@ -58,10 +64,14 @@ async function initChat() {
 }
 
 function updateUserHeader(user) {
-    if (user && user.name) {  // Changed from user.username to user.name
-        userInfoElement.textContent = user.name;  // Display the user's name
-        const firstLetter = user.name.charAt(0).toUpperCase();  // Get first letter of name
-        userAvatarElement.textContent = firstLetter;
+    if (user && user.name) {
+        // Remove the text-skeleton class to prevent box appearance
+        userInfoElement.classList.remove("text-skeleton");
+        userInfoElement.textContent = user.name;
+        
+        const firstLetter = user.name.charAt(0).toUpperCase();
+        userAvatarElement.innerHTML = firstLetter; // Changed from textContent to innerHTML
+        userAvatarElement.classList.remove("avatar-skeleton"); // Remove skeleton class
         
         // Generate a color based on the name
         const colors = ['#6e8efb', '#a777e3', '#4CAF50', '#FF5722', '#607D8B'];
@@ -69,8 +79,10 @@ function updateUserHeader(user) {
         userAvatarElement.style.background = colors[colorIndex];
     } else {
         // Fallback if name isn't available
+        userInfoElement.classList.remove("text-skeleton");
         userInfoElement.textContent = "User";
-        userAvatarElement.textContent = "U";
+        userAvatarElement.innerHTML = "U";
+        userAvatarElement.classList.remove("avatar-skeleton");
         userAvatarElement.style.background = '#6e8efb';
     }
 }
@@ -96,15 +108,36 @@ async function loadContacts() {
         contactsData = data.contacts || [];
         const filteredContacts = contactsData.filter(contact => contact.uid !== user.uid);
         
+        // Load messages for each contact first before sorting
         await Promise.all(filteredContacts.map(async contact => {
-            const messages = await loadMessages(contact.uid, true);
+            const messages = await loadMessages(contact.uid, false); // Changed to get all messages
             messagesData[contact.uid] = messages || [];
         }));
 
+        // Sort contacts by most recent message after all messages are loaded
+        sortContactsByRecentMessage(filteredContacts);
         renderContacts(filteredContacts);
     } catch (error) {
         console.error("❌ Failed to load contacts:", error);
     }
+}
+
+// Improved function to sort contacts by most recent message
+function sortContactsByRecentMessage(contacts) {
+    contacts.sort((a, b) => {
+        const messagesA = messagesData[a.uid] || [];
+        const messagesB = messagesData[b.uid] || [];
+        
+        // Find the newest message timestamp for each contact
+        const latestTimeA = messagesA.length > 0 ? 
+            Math.max(...messagesA.map(m => new Date(m.timestamp || 0).getTime())) : 0;
+        
+        const latestTimeB = messagesB.length > 0 ? 
+            Math.max(...messagesB.map(m => new Date(m.timestamp || 0).getTime())) : 0;
+        
+        // Sort descending (newest first)
+        return latestTimeB - latestTimeA;
+    });
 }
 
 function renderContacts(contacts) {
@@ -120,16 +153,22 @@ function renderContacts(contacts) {
         const colorIndex = contact.username?.length % colors.length || 0;
         const avatarColor = colors[colorIndex];
         
+        // Use improved getLastMessagePreview function to always get the most recent message
         const lastMessage = getLastMessagePreview(contact.uid);
         const lastMessageText = lastMessage?.text || "No messages yet";
-        const lastMessageTime = lastMessage?.timestamp ? formatTime(new Date(lastMessage.timestamp)) : "";
+        
+        // Format time based on message age (today, yesterday, or date)
+        let timeString = "";
+        if (lastMessage?.timestamp) {
+            timeString = formatMessageTime(new Date(lastMessage.timestamp));
+        }
         
         contactItem.innerHTML = `
             <div class="contact-avatar" style="background: ${avatarColor}">${firstLetter}</div>
             <div class="contact-info">
                 <div class="contact-name-row">
                     <span class="contact-name">${contact.username || "Unknown"}</span>
-                    <span class="message-time">${lastMessageTime}</span>
+                    <span class="message-time">${timeString}</span>
                 </div>
                 <div class="contact-preview">${lastMessageText}</div>
             </div>
@@ -143,9 +182,41 @@ function renderContacts(contacts) {
     });
 }
 
+// Improved function to get the last message
 function getLastMessagePreview(contactUID) {
     if (!messagesData[contactUID] || messagesData[contactUID].length === 0) return null;
-    return messagesData[contactUID][0];
+    
+    // Create a copy and sort by timestamp descending (newest first)
+    const sortedMessages = [...messagesData[contactUID]].sort(
+        (a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0)
+    );
+    
+    // Return the first message (newest)
+    return sortedMessages[0];
+}
+
+// Function to format message time based on age
+function formatMessageTime(date) {
+    const now = new Date();
+    const yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);
+    
+    // Same day - show time
+    if (date.toDateString() === now.toDateString()) {
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+    // Yesterday - show "Yesterday"
+    else if (date.toDateString() === yesterday.toDateString()) {
+        return "Yesterday";
+    }
+    // Different year - show date with year
+    else if (date.getFullYear() !== now.getFullYear()) {
+        return date.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+    // Different day this year - show date
+    else {
+        return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    }
 }
 
 function formatTime(date) {
@@ -176,6 +247,7 @@ async function openChat(contact) {
     const colorIndex = contact.username?.length % colors.length || 0;
     chatAvatarElement.style.background = colors[colorIndex];
 
+    // Reload messages to ensure we have the latest
     const messages = await loadMessages(contact.uid);
     messagesData[contact.uid] = messages;
     renderMessages(messages);
@@ -394,34 +466,92 @@ function setupWebSocket(user) {
     };
 }
 
+// Completely revamped function to handle new messages and always move contacts to top
 function handleNewMessage(message) {
-    if (!messagesData[message.sender]) {
-        messagesData[message.sender] = [];
-    }
-    messagesData[message.sender].push(message);
+    const currentUser = getCurrentUser();
+    const isSentByMe = message.sender === currentUser.uid;
     
-    if (message.sender === currentChatUID) {
-        renderMessage(message);
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    } else {
-        unreadMessages[message.sender] = (unreadMessages[message.sender] || 0) + 1;
-        updateContactUI();
+    // Determine the relevant contact UID (whether sender or receiver)
+    const contactUID = isSentByMe ? message.receiver : message.sender;
+    
+    // Initialize message array for this contact if it doesn't exist
+    if (!messagesData[contactUID]) {
+        messagesData[contactUID] = [];
     }
-    updateContactPreviews();
+    
+    // Add message to the messages array with proper timestamp
+    const newMessage = {
+        ...message,
+        timestamp: message.timestamp || new Date().toISOString()
+    };
+    
+    // Add the message to the messages data
+    messagesData[contactUID].push(newMessage);
+    
+    // Render message if in active chat
+    if (contactUID === currentChatUID || 
+        (isSentByMe && message.receiver === currentChatUID)) {
+        renderMessage(newMessage);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    } else if (!isSentByMe) {
+        // Only increment unread count for messages we receive
+        unreadMessages[contactUID] = (unreadMessages[contactUID] || 0) + 1;
+    }
+    
+    // ALWAYS move contact to the top of the list, for both sent and received messages
+    moveContactToTop(contactUID);
 }
 
-function updateContactPreviews() {
+// Improved function to move a contact to the top of the list
+function moveContactToTop(contactUID) {
+    // Find the contact in contactsData
+    const contactIndex = contactsData.findIndex(c => c.uid === contactUID);
+    
+    if (contactIndex === -1) return; // Contact not found
+    
+    // Get the contact
+    const contactToMove = contactsData[contactIndex];
+    
+    // Remove the contact from current position
+    contactsData.splice(contactIndex, 1);
+    
+    // Add to beginning (top) of the array
+    contactsData.unshift(contactToMove);
+    
+    // Re-render contacts with the new order
+    const currentUser = getCurrentUser();
+    const filteredContacts = contactsData.filter(contact => contact.uid !== currentUser.uid);
+    renderContacts(filteredContacts);
+    
+    // Update the UI for unread counts and latest message previews
+    updateContactUI();
+}
+
+// Improved function to update contact UI with latest message preview
+function updateContactUI() {
     document.querySelectorAll(".contact-item").forEach(item => {
         const uid = item.dataset.uid;
-        const lastMessage = getLastMessagePreview(uid);
+        const unreadCount = unreadMessages[uid] || 0;
+        const unreadBadge = item.querySelector(".unread-count");
         
+        if (unreadBadge) {
+            unreadBadge.textContent = unreadCount;
+            unreadBadge.style.display = unreadCount > 0 ? "flex" : "none";
+        }
+        
+        // Always get the most recent message for preview
+        const lastMessage = getLastMessagePreview(uid);
         if (lastMessage) {
-            const previewEl = item.querySelector(".contact-preview");
-            const timeEl = item.querySelector(".message-time");
+            const previewElement = item.querySelector(".contact-preview");
+            const timeElement = item.querySelector(".message-time");
             
-            previewEl.textContent = lastMessage.text || "No messages yet";
-            timeEl.textContent = lastMessage.timestamp ? 
-                formatTime(new Date(lastMessage.timestamp)) : "";
+            if (previewElement) {
+                previewElement.textContent = lastMessage.text || "No messages yet";
+            }
+            
+            if (timeElement && lastMessage.timestamp) {
+                timeElement.textContent = formatMessageTime(new Date(lastMessage.timestamp));
+            }
         }
     });
 }
@@ -434,17 +564,6 @@ function showTypingIndicator(senderUID) {
             typingIndicator.style.display = "none";
         }, 2000);
     }
-}
-
-function updateContactUI() {
-    document.querySelectorAll(".contact-item").forEach(item => {
-        const uid = item.dataset.uid;
-        const unreadCount = unreadMessages[uid] || 0;
-        const unreadBadge = item.querySelector(".unread-count");
-
-        unreadBadge.textContent = unreadCount;
-        unreadBadge.style.display = unreadCount > 0 ? "flex" : "none";
-    });
 }
 
 function setupEventListeners() {
@@ -494,6 +613,31 @@ function setupEventListeners() {
         dropdown.style.display = 'none';
     });
     
+    // Tab switching functionality
+    dmsTab.addEventListener("click", () => {
+        dmsTab.classList.add("active");
+        groupsTab.classList.remove("active");
+        contactsList.style.display = "block";
+        groupsList.style.display = "none";
+        
+        // Animation reset
+        contactsList.style.animation = 'none';
+        contactsList.offsetHeight; // Trigger reflow
+        contactsList.style.animation = 'fadeIn 0.3s ease forwards';
+    });
+
+    groupsTab.addEventListener("click", () => {
+        groupsTab.classList.add("active");
+        dmsTab.classList.remove("active");
+        contactsList.style.display = "none";
+        groupsList.style.display = "block";
+        
+        // Animation reset
+        groupsList.style.animation = 'none';
+        groupsList.offsetHeight; // Trigger reflow
+        groupsList.style.animation = 'fadeIn 0.3s ease forwards';
+    });
+    
     let typingTimeout;
     messageInput.addEventListener("input", () => {
         if (ws && ws.readyState === WebSocket.OPEN && currentChatUID) {
@@ -533,13 +677,11 @@ async function sendMessage() {
             ...message 
         }));
 
-        if (!messagesData[currentChatUID]) {
-            messagesData[currentChatUID] = [];
-        }
-        messagesData[currentChatUID].push(message);
-        renderMessage(message);
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        // Clear input field immediately for better UX
         messageInput.value = "";
+        
+        // Handle the sent message locally
+        handleNewMessage(message);
     } catch (error) {
         console.error("❌ Failed to send message:", error);
     }
