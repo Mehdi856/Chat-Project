@@ -53,33 +53,43 @@ def verify_token(token: str):
 
 
 # ✅ Register User
+from fastapi import Request
+
+
 @app.post("/register")
-async def register_user(user_data: dict):
-    """Registers a new user in Firebase Authentication and Firestore."""
+async def register_user(user_data: dict, request: Request):
+    """Registers a new user with a unique username in Firebase Auth and Firestore."""
     email = user_data.get("email")
     password = user_data.get("password")
-    name = user_data.get("name")
+    name = user_data.get("name")  # Nom complet
+    username = user_data.get("username")  # Nouveau champ
 
-    if not email or not password or not name:
-        raise HTTPException(status_code=400, detail="Missing email, password, or name.")
+    if not email or not password or not name or not username:
+        raise HTTPException(status_code=400, detail="Missing email, password, name, or username.")
 
     try:
-        # Create user in Firebase Auth
+        # Vérifier si le nom d'utilisateur existe déjà (champ unique)
+        existing_users = db.collection("users").where("username", "==", username).get()
+        if existing_users:
+            raise HTTPException(status_code=400, detail="Username already taken.")
+
+        # Créer l'utilisateur dans Firebase Auth
         user = auth.create_user(email=email, password=password, display_name=name)
-        
-        # Store user in Firestore
+
+        # Stocker les infos dans Firestore
         db.collection("users").document(user.uid).set({
             "name": name,
             "email": email,
             "uid": user.uid,
+            "username": username,
             "contacts": [],
             "groups": []
         })
 
         return {"message": "User registered successfully!", "uid": user.uid}
+
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
-
 
 
 # ✅ Login User
@@ -486,14 +496,14 @@ async def create_group(group_data: dict, request: Request):
 
     group_name = group_data.get("name")
     members = group_data.get("members", [])
-    
+
     if not group_name:
         raise HTTPException(status_code=400, detail="Group name is required")
-    
+
     # Ensure creator is in members list
     if uid not in members:
         members.append(uid)
-    
+
     # Create group in Firestore
     group_ref = db.collection("groups").add({
         "name": group_name,
@@ -501,20 +511,20 @@ async def create_group(group_data: dict, request: Request):
         "members": members,
         "created_at": firestore.SERVER_TIMESTAMP
     })
-    
+
     group_id = group_ref[1].id
-    
+
     # Add group ID to each member's groups list
     for member_uid in members:
         user_ref = db.collection("users").document(member_uid)
         user_doc = user_ref.get()
-        
+
         if user_doc.exists:
             user_data = user_doc.to_dict()
             user_groups = user_data.get("groups", [])
             user_groups.append(group_id)
             user_ref.update({"groups": user_groups})
-            
+
             # Notify members about new group (except creator)
             if member_uid != uid:
                 await websocket_manager.send_notification(member_uid, {
@@ -524,39 +534,48 @@ async def create_group(group_data: dict, request: Request):
                     "group_name": group_name,
                     "creator": uid
                 })
-    
+
     return {"message": "Group created successfully", "group_id": group_id}
 
 
 # ✅ Get Groups
 @app.get("/groups/{uid}")
 async def get_groups(uid: str, request: Request):
-    """Retrieves all groups a user belongs to."""
-    # Verify the token from Authorization header
+    """Retrieves all groups a user belongs to (with usernames instead of UIDs)."""
     token = request.headers.get("Authorization", "").replace("Bearer ", "")
     if not token or not verify_token(token):
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     user_ref = db.collection("users").document(uid).get()
-    
     if not user_ref.exists:
         raise HTTPException(status_code=404, detail="User not found")
-    
+
     user_data = user_ref.to_dict()
     group_ids = user_data.get("groups", [])
-    
+
     groups = []
     for group_id in group_ids:
-        group_ref = db.collection("groups").document(group_id).get()
-        if group_ref.exists:
-            group_data = group_ref.to_dict()
+        group_doc = db.collection("groups").document(group_id).get()
+        if group_doc.exists:
+            group_data = group_doc.to_dict()
+            member_uids = group_data.get("members", [])
+
+            # Récupérer les usernames pour tous les membres
+            usernames = []
+            for member_uid in member_uids:
+                user_doc = db.collection("users").document(member_uid).get()
+                if user_doc.exists:
+                    user_info = user_doc.to_dict()
+                    usernames.append(user_info.get("username", member_uid))  # fallback: uid
+
             groups.append({
                 "id": group_id,
                 "name": group_data.get("name"),
-                "members": group_data.get("members", []),
-                "creator": group_data.get("creator")
+                "members": usernames,
+                "creator": db.collection("users").document(group_data.get("creator")).get().to_dict().get("username", group_data.get("creator"))
+
             })
-    
+
     return {"groups": groups}
 
 
