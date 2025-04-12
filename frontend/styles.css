@@ -1994,3 +1994,26 @@ button:hover {
 .add-contact-btn:hover {
   background: #45a049;
 }
+#active-group-chat {
+  display: none;
+  flex-direction: column;
+  height: 100%;
+}
+.group-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 18px;
+  margin-right: 12px;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, #6e8efb, #a777e3);
+}
+.chat-group {
+  display: flex;
+  flex: 1;
+}

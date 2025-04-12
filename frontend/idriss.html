@@ -92,6 +92,42 @@
             <button id="send-btn"></button>
           </div>
         </div>
+        <!-- Active chat group interface (hidden initially) -->
+        <div id="active-group-chat" style="display: none;">
+          <div class="chat-header">
+            <div class="back-button" id="back-button-chat">🡰</div>
+            <div class="chat-group">
+              <div class="group-avatar" id="chat-avatar"></div>
+              <div class="contact-info">
+                <div class="contact-name" id="chat-name"></div>
+                <div id="contact-uid"></div>
+                <span class="typing-indicator" id="typing-indicator"></span>
+              </div>
+            </div>
+            <!-- Chat menu button -->
+            <div class="menu-container">
+              <button class="menu-button">⋮</button>
+              <div class="menu-dropdown">
+                <button id="delete-memeber-btn">Delete member</button>
+                <button id="add-member-btn">Add member</button>
+                <button id="show-members-btn">Show members</button>
+                <!-- Add more menu items if needed -->
+              </div>
+            </div>
+            <div class="chat-actions">
+              <!-- Chat action buttons can be added here -->
+            </div>
+          </div>
+
+          <div class="messages-container" id="messages-container">
+            <!-- Messages will be loaded dynamically -->
+          </div>
+
+          <div class="message-input-container">
+            <input type="text" id="message-input" placeholder="Type a message...">
+            <button id="send-btn"></button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
