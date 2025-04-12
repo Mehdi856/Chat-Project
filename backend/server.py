@@ -728,3 +728,32 @@ async def update_user_name(user_data: dict, request: Request):
         return {"message": "Name updated successfully"}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+@app.get("/search_users")
+async def search_users(q: str, request: Request):
+    """Searches for users by name."""
+    # Verify the token from Authorization header
+    token = request.headers.get("Authorization", "").replace("Bearer ", "")
+    if not token or not verify_token(token):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    if not q or len(q) < 2:
+        return {"users": []}
+
+    try:
+        # Search for users whose name starts with the query (case insensitive)
+        users_ref = db.collection("users")
+        query = users_ref.where("name", ">=", q).where("name", "<=", q + "\uf8ff")
+        
+        results = []
+        for doc in query.stream():
+            user_data = doc.to_dict()
+            # Don't return sensitive information
+            results.append({
+                "uid": user_data.get("uid"),
+                "name": user_data.get("name"),
+                "username": user_data.get("username", "")
+            })
+        
+        return {"users": results}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))    

@@ -1812,3 +1812,185 @@ button:hover {
   font-size: 0.9rem;
   text-align: left;
 }
+/* Settings button styles */
+.settings-container {
+  position: relative;
+  margin-right: 15px;
+}
+
+.settings-button {
+  background: none;
+  border: none;
+  color: #6e8efb;
+  font-size: 1.2rem;
+  cursor: pointer;
+  transition: transform 0.3s ease;
+  padding: 8px;
+  border-radius: 50%;
+}
+
+.settings-button:hover {
+  transform: rotate(30deg);
+  background-color: rgba(110, 142, 251, 0.1);
+}
+
+.settings-dropdown {
+  display: none;
+  position: absolute;
+  right: 0;
+  top: 100%;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  z-index: 100;
+  min-width: 180px;
+  overflow: hidden;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.settings-dropdown button {
+  width: 100%;
+  padding: 10px 15px;
+  text-align: left;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: #333;
+  font-size: 0.9rem;
+}
+
+.settings-dropdown button:hover {
+  background-color: #f5f5f5;
+}
+
+/* Name change modal */
+.name-change-modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  justify-content: center;
+  align-items: center;
+}
+
+.name-change-content {
+  background-color: white;
+  padding: 25px;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
+  animation: slideUp 0.3s ease-out;
+}
+
+.name-change-content h3 {
+  margin-top: 0;
+  color: #333;
+}
+
+.name-change-input {
+  width: 100%;
+  padding: 12px;
+  margin: 15px 0;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 1rem;
+}
+
+.name-change-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.name-change-buttons button {
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.name-change-cancel {
+  background-color: #f5f5f5;
+  color: #333;
+}
+
+.name-change-submit {
+  background-color: #6e8efb;
+  color: white;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+.search-container {
+  padding: 10px;
+  position: relative;
+}
+
+.search-results {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 100;
+  display: none;
+}
+
+.search-result-item {
+  display: flex;
+  align-items: center;
+  padding: 10px;
+  border-bottom: 1px solid #eee;
+  cursor: pointer;
+}
+
+.search-result-item:hover {
+  background-color: #f5f5f5;
+}
+
+.search-result-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #6e8efb;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 10px;
+}
+
+.search-result-name {
+  flex-grow: 1;
+}
+
+.add-contact-btn {
+  padding: 5px 10px;
+  background: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.add-contact-btn:hover {
+  background: #45a049;
+}

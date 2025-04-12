@@ -31,6 +31,8 @@ const notificationCount = document.getElementById("notification-count");
 const notificationPanel = document.getElementById("notification-panel");
 const notificationList = document.getElementById("notification-list");
 const closeNotificationBtn = document.getElementById("close-notification-btn");
+const userSearchInput = document.getElementById("user-search-input");
+const searchResultsContainer = document.getElementById("search-results");
 
 // Tab switching elements
 const dmsTab = document.getElementById("dms-tab");
@@ -61,6 +63,7 @@ async function initChat() {
     await fetchPendingContactRequests();
     setupWebSocket(user);
     setupEventListeners();
+    setupSearchListeners();
 }
 
 function updateUserHeader(user) {
@@ -567,6 +570,26 @@ function showTypingIndicator(senderUID) {
 }
 
 function setupEventListeners() {
+    document.getElementById("settings-button").addEventListener("click", (e) => {
+        e.stopPropagation();
+        const dropdown = document.getElementById("settings-dropdown");
+        dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
+      });
+      
+      document.addEventListener("click", () => {
+        document.getElementById("settings-dropdown").style.display = "none";
+      });
+      
+      document.getElementById("change-name-btn").addEventListener("click", () => {
+        document.getElementById("name-change-modal").style.display = "flex";
+        document.getElementById("settings-dropdown").style.display = "none";
+      });
+      
+      document.getElementById("name-change-cancel").addEventListener("click", () => {
+        document.getElementById("name-change-modal").style.display = "none";
+      });
+      
+      document.getElementById("name-change-submit").addEventListener("click", changeUserName);
     sendBtn.addEventListener("click", sendMessage);
     messageInput.addEventListener("keypress", (e) => {
         if (e.key === "Enter") sendMessage();
@@ -759,3 +782,181 @@ async function deleteCurrentContact() {
         alert("Failed to delete contact. Try again.");
     }
 }
+async function changeUserName() {
+    const newName = document.getElementById("name-change-input").value.trim();
+    if (!newName) {
+      alert("Please enter a valid name");
+      return;
+    }
+  
+    try {
+      const user = getCurrentUser();
+      if (!user?.token) throw new Error("User not authenticated");
+  
+      // Update in Firestore
+      const response = await fetch(`${BACKEND_URL}/update_name`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${user.token}`
+        },
+        body: JSON.stringify({ name: newName })
+      });
+  
+      if (!response.ok) {
+        throw new Error(`Server error: ${response.statusText}`);
+      }
+  
+      // Get current user data from localStorage
+      const storedUser = JSON.parse(localStorage.getItem("user"));
+      if (!storedUser) {
+        throw new Error("User data not found in localStorage");
+      }
+  
+      // Update local user data
+      storedUser.name = newName;
+      
+      // Update in localStorage
+      localStorage.setItem("user", JSON.stringify(storedUser));
+  
+      // Close modal and update UI
+      document.getElementById("name-change-modal").style.display = "none";
+      document.getElementById("name-change-input").value = "";
+      
+      // Refresh user display with updated data
+      updateUserHeader(storedUser);
+      await loadContacts(); // Refresh contacts list if needed
+      
+      alert("Name updated successfully!");
+    } catch (error) {
+      console.error("❌ Failed to update name:", error);
+      alert("Failed to update name. Please try again.");
+    }
+  }
+  // Setup search input event listener
+function setupSearchListeners() {
+    userSearchInput.addEventListener("input", debounce(handleUserSearch, 300));
+}
+
+// Debounce function to limit API calls
+function debounce(func, wait) {
+    let timeout;
+    return function(...args) {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(this, args), wait);
+    };
+}
+
+// Handle user search
+async function handleUserSearch(e) {
+    const searchTerm = e.target.value.trim();
+    if (searchTerm.length < 2) {
+        searchResultsContainer.style.display = "none";
+        return;
+    }
+
+    try {
+        const user = getCurrentUser();
+        if (!user?.token) throw new Error("User not authenticated");
+
+        const response = await fetch(`${BACKEND_URL}/search_users?q=${encodeURIComponent(searchTerm)}`, {
+            headers: { Authorization: `Bearer ${user.token}` },
+        });
+
+        if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
+
+        const results = await response.json();
+        displaySearchResults(results.users || []);
+    } catch (error) {
+        console.error("❌ Failed to search users:", error);
+        searchResultsContainer.style.display = "none";
+    }
+}
+
+// Display search results
+function displaySearchResults(users) {
+    searchResultsContainer.innerHTML = "";
+    
+    if (users.length === 0) {
+        const noResults = document.createElement("div");
+        noResults.classList.add("search-result-item");
+        noResults.textContent = "No users found";
+        searchResultsContainer.appendChild(noResults);
+        searchResultsContainer.style.display = "block";
+        return;
+    }
+
+    users.forEach(user => {
+        // Skip the current user in search results
+        const currentUser = getCurrentUser();
+        if (user.uid === currentUser?.uid) return;
+
+        const resultItem = document.createElement("div");
+        resultItem.classList.add("search-result-item");
+        
+        const firstLetter = user.name?.charAt(0).toUpperCase() || "?";
+        const colors = ['#6e8efb', '#a777e3', '#4CAF50', '#FF5722', '#607D8B'];
+        const colorIndex = user.name?.length % colors.length || 0;
+        const avatarColor = colors[colorIndex];
+        
+        resultItem.innerHTML = `
+            <div class="search-result-avatar" style="background: ${avatarColor}">${firstLetter}</div>
+            <div class="search-result-name">${user.name || "Unknown"}</div>
+            <button class="add-contact-btn" data-uid="${user.uid}">Add Contact</button>
+        `;
+        
+        searchResultsContainer.appendChild(resultItem);
+    });
+
+    // Add event listeners to all add contact buttons
+    document.querySelectorAll(".add-contact-btn").forEach(btn => {
+        btn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            const uid = btn.dataset.uid;
+            addSearchedContact(uid);
+        });
+    });
+
+    searchResultsContainer.style.display = "block";
+}
+
+// Add contact from search results
+async function addSearchedContact(contactUID) {
+    const user = getCurrentUser();
+    
+    if (!user || !user.token || !contactUID) {
+        alert("Invalid user or empty UID!");
+        return;
+    }
+
+    try {
+        const response = await fetch(`${BACKEND_URL}/contacts/${user.uid}`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${user.token}`
+            },
+            body: JSON.stringify({ contact_uid: contactUID })
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to add contact: ${response.statusText}`);
+        }
+
+        alert("✅ Contact request sent successfully!");
+        userSearchInput.value = "";
+        searchResultsContainer.style.display = "none";
+        await loadContacts();
+    } catch (error) {
+        console.error("❌ Error adding contact:", error);
+        alert("Failed to add contact. Try again.");
+    }
+}
+
+// Close search results when clicking outside
+document.addEventListener("click", (e) => {
+    if (!searchResultsContainer.contains(e.target) && 
+        !userSearchInput.contains(e.target)) {
+        searchResultsContainer.style.display = "none";
+    }
+});

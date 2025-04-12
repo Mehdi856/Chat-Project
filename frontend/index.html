@@ -32,7 +32,7 @@
       
       <button id="logout-btn">Logout</button>
     </header>
-
+     
     <!-- Notification panel -->
     <div class="notification-panel" id="notification-panel" style="display: none;">
       <div class="notification-header">
@@ -41,6 +41,14 @@
       </div>
       <div class="notification-list" id="notification-list">
         <!-- Notification items will be loaded dynamically -->
+      </div>
+    </div>
+    <div class="settings-container">
+      <button class="settings-button" id="settings-button">
+        <i class="fas fa-cog"></i>
+      </button>
+      <div class="settings-dropdown" id="settings-dropdown">
+        <button id="change-name-btn">Change Name</button>
       </div>
     </div>
 
@@ -81,9 +89,14 @@
         <div id="no-chat-selected">
           <h2>Select a chat</h2>
           <p>Choose a contact from the sidebar to start messaging</p>
+          <div class="search-container">
+            <input type="text" id="user-search-input" placeholder="Search for users...">
+            <div id="search-results" class="search-results"></div>
+          </div>
           <button id="contact-btn">Add New Contact</button>
           <button id="Create-group">Create group</button>
         </div>
+        
         <!-- New contact form (hidden initially) -->
         <div id="New-contact" style="display: none; ">
           <div class="back-button" id="back-button-contact">🡰</div>
@@ -139,7 +152,16 @@
       </div>
     </div>
   </div>
-
+  <div class="name-change-modal" id="name-change-modal">
+    <div class="name-change-content">
+      <h3>Change Your Name</h3>
+      <input type="text" class="name-change-input" id="name-change-input" placeholder="Enter new name">
+      <div class="name-change-buttons">
+        <button class="name-change-cancel" id="name-change-cancel">Cancel</button>
+        <button class="name-change-submit" id="name-change-submit">Save</button>
+      </div>
+    </div>
+  </div>
   <!-- Import scripts -->
   <script>
     document.getElementById("contact-btn").addEventListener("click", () => {
