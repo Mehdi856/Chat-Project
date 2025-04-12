@@ -62,35 +62,20 @@ async def register_user(user_data: dict, request: Request):
     email = user_data.get("email")
     password = user_data.get("password")
     name = user_data.get("name")  # Full name
-    username = user_data.get("username", "")  # Optional during registration
 
     if not email or not password or not name:
         raise HTTPException(status_code=400, detail="Missing email, password, or name.")
 
     try:
-        # Validate username if provided during registration
-        if username:
-            if len(username) < 3:
-                raise HTTPException(status_code=400, detail="Username must be at least 3 characters")
-            
-            # Check if username contains only allowed characters
-            if not username.isalnum():
-                raise HTTPException(status_code=400, detail="Username can only contain letters and numbers")
-            
-            # Check if username is already taken
-            existing_users = db.collection("users").where("username", "==", username).get()
-            if existing_users:
-                raise HTTPException(status_code=400, detail="Username already taken")
-            
         # Create the user in Firebase Auth
         user = auth.create_user(email=email, password=password, display_name=name)
 
-        # Store user info in Firestore with empty username initially
+        # Store user info in Firestore with empty username
         db.collection("users").document(user.uid).set({
             "name": name,
             "email": email,
             "uid": user.uid,
-            "username": username,  # Will be empty initially
+            "username": "",  # Empty initially
             "contacts": [],
             "groups": []
         })
@@ -99,9 +84,8 @@ async def register_user(user_data: dict, request: Request):
             "message": "User registered successfully!", 
             "uid": user.uid,
             "name": name,
-            "username": username  # Return the username (empty for now)
+            "username": ""  # Return empty username
         }
-
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
