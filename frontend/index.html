@@ -17,6 +17,11 @@
             <i class="fas fa-bell"></i>
             <span class="notification-count" id="notification-count">0</span>
           </div>
+          
+          <!-- Add settings button here -->
+          <div class="settings-button" id="settings-button">
+            <i class="fas fa-pen"></i>
+          </div>
         </div>
         
         <div class="user-avatar" id="user-avatar">
@@ -41,14 +46,6 @@
       </div>
       <div class="notification-list" id="notification-list">
         <!-- Notification items will be loaded dynamically -->
-      </div>
-    </div>
-    <div class="settings-container">
-      <button class="settings-button" id="settings-button">
-        <i class="fas fa-cog"></i>
-      </button>
-      <div class="settings-dropdown" id="settings-dropdown">
-        <button id="change-name-btn">Change Name</button>
       </div>
     </div>
 
@@ -79,6 +76,7 @@
             <i class="fas fa-users empty-icon"></i>
             <p>No groups available yet</p>
             <small>Create a group to start chatting with multiple people</small>
+            <button id="Create-group-small" class="create-group-small">Create Group</button>
           </div>
         </div>
       </div>
@@ -87,14 +85,12 @@
       <div class="chat-main">
         <!-- Initially show welcome message -->
         <div id="no-chat-selected">
-          <h2>Select a chat</h2>
-          <p>Choose a contact from the sidebar to start messaging</p>
+          <h2>Find your friends</h2>
+          <p>Search by username and select a contact from the sidebar to start chatting</p>
           <div class="search-container">
             <input type="text" id="user-search-input" placeholder="Search for users...">
             <div id="search-results" class="search-results"></div>
           </div>
-          <button id="contact-btn">Add New Contact</button>
-          <button id="Create-group">Create group</button>
         </div>
         
         <!-- New contact form (hidden initially) -->
@@ -164,13 +160,7 @@
   </div>
   <!-- Import scripts -->
   <script>
-    document.getElementById("contact-btn").addEventListener("click", () => {
-      document.getElementById("no-chat-selected").style.display = "none";
-      document.getElementById("New-contact").style.display = "flex";
-    });
-  </script>
-  <script>
-    document.getElementById("Create-group").addEventListener("click", () => {
+    document.getElementById("Create-group-small").addEventListener("click", () => {
       document.getElementById("no-chat-selected").style.display = "none";
       document.getElementById("New-group").style.display = "flex";
     });
