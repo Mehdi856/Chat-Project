@@ -14,12 +14,34 @@ def encrypt_message(message: str) -> str:
     cipher = AES.new(SECRET_KEY.encode(), AES.MODE_EAX)
     nonce = cipher.nonce
     ciphertext, tag = cipher.encrypt_and_digest(message.encode())
-    return base64.b64encode(nonce + ciphertext).decode()
+    # Include the tag in the encrypted data
+    return base64.b64encode(nonce + tag + ciphertext).decode()
 
 def decrypt_message(encrypted_message: str) -> str:
     """Decrypts a message using AES."""
     data = base64.b64decode(encrypted_message)
     nonce = data[:16]
-    ciphertext = data[16:]
+    tag = data[16:32]  # Extract the tag
+    ciphertext = data[32:]
     cipher = AES.new(SECRET_KEY.encode(), AES.MODE_EAX, nonce=nonce)
-    return cipher.decrypt(ciphertext).decode()
+    # Verify the tag during decryption
+    plaintext = cipher.decrypt_and_verify(ciphertext, tag)
+    return plaintext.decode()
+
+def encrypt_file(file_bytes: bytes) -> bytes:
+    """Encrypts binary file data (e.g., image or PDF)."""
+    cipher = AES.new(SECRET_KEY.encode(), AES.MODE_EAX)
+    nonce = cipher.nonce
+    ciphertext, tag = cipher.encrypt_and_digest(file_bytes)
+    # Store nonce + tag + ciphertext
+    return nonce + tag + ciphertext
+
+def decrypt_file(encrypted_bytes: bytes) -> bytes:
+    """Decrypts binary file data (e.g., image or PDF)."""
+    nonce = encrypted_bytes[:16]
+    tag = encrypted_bytes[16:32]
+    ciphertext = encrypted_bytes[32:]
+    
+    cipher = AES.new(SECRET_KEY.encode(), AES.MODE_EAX, nonce=nonce)
+    # Verify the tag during decryption
+    return cipher.decrypt_and_verify(ciphertext, tag)
