@@ -61,32 +61,46 @@ async def register_user(user_data: dict, request: Request):
     """Registers a new user with a unique username in Firebase Auth and Firestore."""
     email = user_data.get("email")
     password = user_data.get("password")
-    name = user_data.get("name")  # Nom complet
-    username = user_data.get("username")  # Nouveau champ
+    name = user_data.get("name")  # Full name
+    username = user_data.get("username", "")  # Optional during registration
 
-    if not email or not password or not name or not username:
-        raise HTTPException(status_code=400, detail="Missing email, password, name, or username.")
+    if not email or not password or not name:
+        raise HTTPException(status_code=400, detail="Missing email, password, or name.")
 
     try:
-        # Vérifier si le nom d'utilisateur existe déjà (champ unique)
-        existing_users = db.collection("users").where("username", "==", username).get()
-        if existing_users:
-            raise HTTPException(status_code=400, detail="Username already taken.")
-
-        # Créer l'utilisateur dans Firebase Auth
+        # Validate username if provided during registration
+        if username:
+            if len(username) < 3:
+                raise HTTPException(status_code=400, detail="Username must be at least 3 characters")
+            
+            # Check if username contains only allowed characters
+            if not username.isalnum():
+                raise HTTPException(status_code=400, detail="Username can only contain letters and numbers")
+            
+            # Check if username is already taken
+            existing_users = db.collection("users").where("username", "==", username).get()
+            if existing_users:
+                raise HTTPException(status_code=400, detail="Username already taken")
+            
+        # Create the user in Firebase Auth
         user = auth.create_user(email=email, password=password, display_name=name)
 
-        # Stocker les infos dans Firestore
+        # Store user info in Firestore with empty username initially
         db.collection("users").document(user.uid).set({
             "name": name,
             "email": email,
             "uid": user.uid,
-            "username": username,
+            "username": username,  # Will be empty initially
             "contacts": [],
             "groups": []
         })
 
-        return {"message": "User registered successfully!", "uid": user.uid}
+        return {
+            "message": "User registered successfully!", 
+            "uid": user.uid,
+            "name": name,
+            "username": username  # Return the username (empty for now)
+        }
 
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -104,22 +118,24 @@ async def login_user(user_data: dict):
 
     try:
         user = auth.get_user_by_email(email)
-        # Get user's name from Firestore
+        # Get user's data from Firestore
         user_doc = db.collection("users").document(user.uid).get()
         if not user_doc.exists:
             raise HTTPException(status_code=404, detail="User data not found")
         
         user_data = user_doc.to_dict()
-        name = user_data.get("name", "User")  #  if name not found it puts User left for testing
+        name = user_data.get("name", "User")
+        username = user_data.get("username", "")  # Get username (empty if not set)
 
-        # Generate a custom token (Firebase handles authentication)
+        # Generate a custom token
         custom_token = auth.create_custom_token(user.uid)
 
         return {
             "message": "Login successful!",
             "uid": user.uid,
             "token": custom_token.decode("utf-8"),
-            "name": name  # Add name to response
+            "name": name,
+            "username": username  # Include username in response
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail="Invalid email or password.")
@@ -675,3 +691,34 @@ async def get_group_messages(group_id: str, request: Request, limit: Optional[in
             print(f"Error decrypting message: {e}")
     
     return messages
+@app.post("/set_username")
+async def set_username(user_data: dict, request: Request):
+    """Sets the username for a user after registration."""
+    # Verify the token from Authorization header
+    token = request.headers.get("Authorization", "").replace("Bearer ", "")
+    if not token or not verify_token(token):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    uid = user_data.get("uid")
+    username = user_data.get("username")
+
+    if not uid or not username:
+        raise HTTPException(status_code=400, detail="Missing uid or username")
+
+    # Validate username
+    if len(username) < 3:
+        raise HTTPException(status_code=400, detail="Username must be at least 3 characters")
+    
+    if not username.isalnum():
+        raise HTTPException(status_code=400, detail="Username can only contain letters and numbers")
+
+    # Check if username is already taken
+    existing_users = db.collection("users").where("username", "==", username).get()
+    if existing_users:
+        raise HTTPException(status_code=400, detail="Username already taken")
+
+    # Update the user's document with the username
+    user_ref = db.collection("users").document(uid)
+    user_ref.update({"username": username})
+
+    return {"message": "Username set successfully"}
