@@ -153,29 +153,29 @@
       }
 
       // ✅ Signup form submission
-      if (signupForm) {
-        signupForm.addEventListener("submit", async (event) => {
-          event.preventDefault();
+    if (signupForm) {
+      signupForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
 
-          const username = document.getElementById("signup-name").value.trim();
-          const email = document.getElementById("signup-email").value.trim();
-          const password = document.getElementById("signup-password").value.trim();
-          const errorMsg = document.getElementById("signup-error");
+  const name = document.getElementById("signup-name").value.trim();
+  const email = document.getElementById("signup-email").value.trim();
+  const password = document.getElementById("signup-password").value.trim();
+  const errorMsg = document.getElementById("signup-error");
 
-          errorMsg.textContent = ""; // Clear previous errors
+  errorMsg.textContent = ""; // Clear previous errors
 
-          if (!username || !email || !password) {
-            errorMsg.textContent = "❌ All fields are required!";
-            return;
-          }
+  if (!name || !email || !password) {
+    errorMsg.textContent = "❌ All fields are required!";
+    return;
+  }
 
-          const result = await registerUser(email, password, username);
+  const result = await registerUser(email, password, name);  // Remove username parameter
 
-          if (!result.success) {
-            errorMsg.textContent = `❌ ${result.error}`;
-          }
-        });
-      }
+  if (!result.success) {
+    errorMsg.textContent = `❌ ${result.error}`;
+  }
+});
+   }
     });
   </script>
 </body>
