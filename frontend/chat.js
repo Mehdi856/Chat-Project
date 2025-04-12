@@ -92,7 +92,7 @@ function updateUserHeader(user) {
 
 function displayUserUid(user) {
     if (user && user.uid) {
-        displayUidElement.textContent = `Your UID: ${user.uid}`;
+        displayUidElement.textContent = `Username: ${user.username}`;
     }
 }
 
@@ -242,7 +242,7 @@ async function openChat(contact) {
     document.getElementById("New-group").style.display = "none";
     
     chatNameElement.textContent = contact.username || contact.uid;
-    contactUidElement.textContent = `Contact UID: ${contact.uid}`;
+    contactUidElement.textContent = `Username: ${contact.username || "Unknown"}`;
     
     const firstLetter = contact.username?.charAt(0).toUpperCase() || "?";
     chatAvatarElement.textContent = firstLetter;
@@ -570,26 +570,16 @@ function showTypingIndicator(senderUID) {
 }
 
 function setupEventListeners() {
-    document.getElementById("settings-button").addEventListener("click", (e) => {
-        e.stopPropagation();
-        const dropdown = document.getElementById("settings-dropdown");
-        dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
-      });
-      
-      document.addEventListener("click", () => {
-        document.getElementById("settings-dropdown").style.display = "none";
-      });
-      
-      document.getElementById("change-name-btn").addEventListener("click", () => {
-        document.getElementById("name-change-modal").style.display = "flex";
-        document.getElementById("settings-dropdown").style.display = "none";
-      });
-      
-      document.getElementById("name-change-cancel").addEventListener("click", () => {
-        document.getElementById("name-change-modal").style.display = "none";
-      });
-      
-      document.getElementById("name-change-submit").addEventListener("click", changeUserName);
+    // Settings button now opens the name change modal directly
+    document.getElementById("settings-button").addEventListener("click", () => {
+      document.getElementById("name-change-modal").style.display = "flex";
+    });
+    
+    document.getElementById("name-change-cancel").addEventListener("click", () => {
+      document.getElementById("name-change-modal").style.display = "none";
+    });
+    
+    document.getElementById("name-change-submit").addEventListener("click", changeUserName);
     sendBtn.addEventListener("click", sendMessage);
     messageInput.addEventListener("keypress", (e) => {
         if (e.key === "Enter") sendMessage();
@@ -900,10 +890,13 @@ function displaySearchResults(users) {
         const avatarColor = colors[colorIndex];
         
         resultItem.innerHTML = `
-            <div class="search-result-avatar" style="background: ${avatarColor}">${firstLetter}</div>
-            <div class="search-result-name">${user.name || "Unknown"}</div>
-            <button class="add-contact-btn" data-uid="${user.uid}">Add Contact</button>
-        `;
+    <div class="search-result-avatar" style="background: ${avatarColor}">${firstLetter}</div>
+    <div class="search-result-info">
+        <div class="search-result-name">${user.name || "Unknown"}</div>
+        <div class="search-result-username">@${user.username || ""}</div>
+    </div>
+    <button class="add-contact-btn" data-uid="${user.uid}">Add Contact</button>
+`;
         
         searchResultsContainer.appendChild(resultItem);
     });
