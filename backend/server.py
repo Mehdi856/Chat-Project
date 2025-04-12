@@ -702,3 +702,29 @@ async def set_username(user_data: dict, request: Request):
     user_ref.update({"username": username})
 
     return {"message": "Username set successfully"}
+# ✅ Update User Name
+@app.post("/update_name")
+async def update_user_name(user_data: dict, request: Request):
+    """Updates a user's name in Firestore."""
+    # Verify the token from Authorization header
+    token = request.headers.get("Authorization", "").replace("Bearer ", "")
+    uid = verify_token(token)
+    if not token or not uid:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    new_name = user_data.get("name")
+    
+    if not new_name:
+        raise HTTPException(status_code=400, detail="Name is required")
+    
+    try:
+        # Update the user's document with the new name
+        user_ref = db.collection("users").document(uid)
+        user_ref.update({"name": new_name})
+        
+        # Also update the display name in Firebase Auth
+        auth.update_user(uid, display_name=new_name)
+        
+        return {"message": "Name updated successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
