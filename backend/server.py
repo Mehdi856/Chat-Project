@@ -742,7 +742,7 @@ async def search_users(q: str, request: Request):
     try:
         # Search for users whose name starts with the query (case insensitive)
         users_ref = db.collection("users")
-        query = users_ref.where("name", ">=", q).where("name", "<=", q + "\uf8ff")
+        query = users_ref.where("username", ">=", q).where("username", "<=", q + "\uf8ff")
         
         results = []
         for doc in query.stream():
