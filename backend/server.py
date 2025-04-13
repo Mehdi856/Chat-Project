@@ -1,7 +1,7 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Depends, Request
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Depends, Request, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 import firebase_admin
-from firebase_admin import auth, firestore, credentials
+from firebase_admin import auth, firestore, credentials, storage
 from encryption import encrypt_message, decrypt_message
 from websocket_manager import WebSocketManager
 import os
@@ -9,7 +9,6 @@ import json
 import uuid
 from datetime import datetime
 from typing import Optional, List
-
 app = FastAPI()
 
 # ✅ CORS Middleware (Allow Frontend and development origins)
@@ -40,6 +39,9 @@ db = firestore.client()
 
 # ✅ WebSocket Manager
 websocket_manager = WebSocketManager()
+
+# ✅ Initialize Firebase Storage bucket
+bucket = storage.bucket()
 
 # ✅ Token Verification
 def verify_token(token: str):
@@ -757,3 +759,29 @@ async def search_users(q: str, request: Request):
         return {"users": results}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))    
+
+
+@app.post("/upload")
+async def upload_file(file: UploadFile = File(...), user_uid: str = Form(...)):
+    """Uploads a file or image to Firebase Storage and saves metadata to Firestore."""
+    try:
+        file_id = str(uuid.uuid4())
+        blob = bucket.blob(f"uploads/{file_id}_{file.filename}")
+        blob.upload_from_file(file.file, content_type=file.content_type)
+        blob.make_public()
+
+        metadata = {
+            "file_name": file.filename,
+            "content_type": file.content_type,
+            "url": blob.public_url,
+            "uid": user_uid,
+            "size": file.spool_max_size,
+            "timestamp": firestore.SERVER_TIMESTAMP
+        }
+
+        db.collection("uploads").add(metadata)
+
+        return {"status": "success", "url": blob.public_url}
+
+    except Exception as e:
+        return {"status": "error", "detail": str(e)}
