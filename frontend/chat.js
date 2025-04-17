@@ -151,9 +151,9 @@ function renderContacts(contacts) {
         contactItem.classList.add("contact-item");
         contactItem.dataset.uid = contact.uid;
         
-        const firstLetter = contact.username?.charAt(0).toUpperCase() || "?";
+        const firstLetter = (contact.name || contact.username)?.charAt(0).toUpperCase() || "?";
         const colors = ['#6e8efb', '#a777e3', '#4CAF50', '#FF5722', '#607D8B'];
-        const colorIndex = contact.username?.length % colors.length || 0;
+        const colorIndex = (contact.name || contact.username)?.length % colors.length || 0;
         const avatarColor = colors[colorIndex];
         
         // Use improved getLastMessagePreview function to always get the most recent message
@@ -170,7 +170,7 @@ function renderContacts(contacts) {
             <div class="contact-avatar" style="background: ${avatarColor}">${firstLetter}</div>
             <div class="contact-info">
                 <div class="contact-name-row">
-                    <span class="contact-name">${contact.username || "Unknown"}</span>
+                    <span class="contact-name">${contact.name || contact.username}</span>
                     <span class="message-time">${timeString}</span>
                 </div>
                 <div class="contact-preview">${lastMessageText}</div>
@@ -241,13 +241,13 @@ async function openChat(contact) {
     document.getElementById("New-contact").style.display = "none";
     document.getElementById("New-group").style.display = "none";
     
-    chatNameElement.textContent = contact.username || contact.uid;
-    contactUidElement.textContent = `Username: ${contact.username || "Unknown"}`;
+    chatNameElement.textContent = contact.name || contact.username;
+    contactUidElement.textContent = `Username: ${contact.username}`;
     
-    const firstLetter = contact.username?.charAt(0).toUpperCase() || "?";
+    const firstLetter = (contact.name || contact.username)?.charAt(0).toUpperCase() || "?";
     chatAvatarElement.textContent = firstLetter;
     const colors = ['#6e8efb', '#a777e3', '#4CAF50', '#FF5722', '#607D8B'];
-    const colorIndex = contact.username?.length % colors.length || 0;
+    const colorIndex = (contact.name || contact.username)?.length % colors.length || 0;
     chatAvatarElement.style.background = colors[colorIndex];
 
     // Reload messages to ensure we have the latest
@@ -570,6 +570,12 @@ function showTypingIndicator(senderUID) {
 }
 
 function setupEventListeners() {
+    // Add this new event listener for the contacts search
+    const contactSearchInput = document.querySelector('input[placeholder="Search contacts..."]');
+    if (contactSearchInput) {
+        contactSearchInput.addEventListener('input', filterContacts);
+    }
+
     // Settings button now opens the name change modal directly
     document.getElementById("settings-button").addEventListener("click", () => {
       document.getElementById("name-change-modal").style.display = "flex";
@@ -668,6 +674,21 @@ function setupEventListeners() {
     });
 
     logoutBtn.addEventListener("click", logoutUser);
+}
+
+// Add this new function for filtering contacts
+function filterContacts(e) {
+    const searchTerm = e.target.value.trim().toLowerCase();
+    const contactItems = document.querySelectorAll('.contact-item');
+    
+    contactItems.forEach(item => {
+        const contactName = item.querySelector('.contact-name').textContent.toLowerCase();
+        if (contactName.startsWith(searchTerm)) {
+            item.style.display = 'flex';
+        } else {
+            item.style.display = 'none';
+        }
+    });
 }
 
 async function sendMessage() {
@@ -772,6 +793,7 @@ async function deleteCurrentContact() {
         alert("Failed to delete contact. Try again.");
     }
 }
+
 async function changeUserName() {
     const newName = document.getElementById("name-change-input").value.trim();
     if (!newName) {
@@ -823,7 +845,8 @@ async function changeUserName() {
       alert("Failed to update name. Please try again.");
     }
   }
-  // Setup search input event listener
+
+// Setup search input event listener
 function setupSearchListeners() {
     userSearchInput.addEventListener("input", debounce(handleUserSearch, 300));
 }
