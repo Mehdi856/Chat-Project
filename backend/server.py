@@ -989,3 +989,20 @@ async def remove_group_member(group_id: str, member_uid: str, request: Request):
         })
     
     return {"message": "Member removed successfully"}
+@app.get("/user_details/{uid}")
+async def get_user_details(uid: str, request: Request):
+    """Returns basic user details by UID."""
+    token = request.headers.get("Authorization", "").replace("Bearer ", "")
+    if not token or not verify_token(token):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    user_ref = db.collection("users").document(uid).get()
+    if not user_ref.exists:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    user_data = user_ref.to_dict()
+    return {
+        "uid": uid,
+        "name": user_data.get("name"),
+        "username": user_data.get("username", "")
+    }
