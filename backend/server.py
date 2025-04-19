@@ -173,10 +173,12 @@ async def websocket_endpoint(websocket: WebSocket):
         await websocket_manager.connect(websocket, sender_uid)
 
         while True:
+            
             # 🔹 Receive & parse message
             data = await websocket.receive_json()
             message_type = data.get("type", "message")
-
+            
+            
             if message_type == "message":
                 receiver_uid = data.get("receiver")
                 text = data.get("text")
@@ -205,6 +207,61 @@ async def websocket_endpoint(websocket: WebSocket):
                 if receiver_uid:
                     # Forward typing indicator to receiver
                     await websocket_manager.send_typing_indicator(receiver_uid, sender_uid)
+                        
+
+            if message_type == "group_message":
+                group_id = data.get("group_id")
+                text = data.get("text")
+                
+                if not group_id or not text:
+                    continue
+                
+                # Verify user is in the group
+                group_ref = db.collection("groups").document(group_id).get()
+                if not group_ref.exists:
+                    continue
+                
+                group_data = group_ref.to_dict()
+                if sender_uid not in group_data.get("members", []):
+                    continue
+                
+                # Encrypt and store message
+                encrypted_text = encrypt_message(text)
+                db.collection("group_messages").add({
+                    "group_id": group_id,
+                    "sender": sender_uid,
+                    "message": encrypted_text,
+                    "timestamp": firestore.SERVER_TIMESTAMP
+                })
+                
+                # Send to group members
+                await websocket_manager.send_group_message(
+                    group_id=group_id,
+                    sender_uid=sender_uid,
+                    text=text,
+                    members=group_data.get("members", [])
+                )
+
+            elif message_type == "group_typing":
+                group_id = data.get("group_id")
+                
+                if not group_id:
+                    continue
+                
+                # Verify user is in the group
+                group_ref = db.collection("groups").document(group_id).get()
+                if not group_ref.exists:
+                    continue
+                
+                group_data = group_ref.to_dict()
+                if sender_uid not in group_data.get("members", []):
+                    continue
+                
+                await websocket_manager.send_group_typing_indicator(
+                    group_id=group_id,
+                    sender_uid=sender_uid,
+                    members=group_data.get("members", [])
+                )
 
     except WebSocketDisconnect:
         print(f"🔴 User {sender_uid} disconnected")
@@ -785,3 +842,148 @@ async def upload_file(file: UploadFile = File(...), user_uid: str = Form(...)):
 
     except Exception as e:
         return {"status": "error", "detail": str(e)}
+#a new endpoint to get group details
+@app.get("/groups/{group_id}/details")
+async def get_group_details(group_id: str, request: Request):
+    """Returns detailed information about a specific group."""
+    token = request.headers.get("Authorization", "").replace("Bearer ", "")
+    uid = verify_token(token)
+    if not token or not uid:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    group_ref = db.collection("groups").document(group_id).get()
+    if not group_ref.exists:
+        raise HTTPException(status_code=404, detail="Group not found")
+    
+    group_data = group_ref.to_dict()
+    if uid not in group_data.get("members", []):
+        raise HTTPException(status_code=403, detail="Not a group member")
+    
+    # Get member details
+    members_info = []
+    for member_uid in group_data["members"]:
+        user_doc = db.collection("users").document(member_uid).get()
+        if user_doc.exists:
+            user_data = user_doc.to_dict()
+            members_info.append({
+                "uid": member_uid,
+                "name": user_data.get("name"),
+                "username": user_data.get("username", "")
+            })
+    
+    return {
+        "id": group_id,
+        "name": group_data["name"],
+        "creator": group_data["creator"],
+        "members": members_info,
+        "created_at": group_data["created_at"]
+    }
+@app.post("/groups/{group_id}/members")
+async def add_group_members(group_id: str, member_data: dict, request: Request):
+    """Adds members to an existing group."""
+    token = request.headers.get("Authorization", "").replace("Bearer ", "")
+    uid = verify_token(token)
+    if not token or not uid:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    new_members = member_data.get("members", [])
+    if not new_members:
+        raise HTTPException(status_code=400, detail="No members provided")
+    
+    # Verify group exists and user is the creator
+    group_ref = db.collection("groups").document(group_id)
+    group_doc = group_ref.get()
+    
+    if not group_doc.exists:
+        raise HTTPException(status_code=404, detail="Group not found")
+    
+    group_data = group_doc.to_dict()
+    if group_data["creator"] != uid:
+        raise HTTPException(status_code=403, detail="Only group creator can add members")
+    
+    # Get current members
+    current_members = group_data.get("members", [])
+    added_members = []
+    
+    # Add new members
+    for member_uid in new_members:
+        if member_uid not in current_members:
+            current_members.append(member_uid)
+            added_members.append(member_uid)
+    
+    # Update group
+    group_ref.update({"members": current_members})
+    
+    # Add group to new members' groups list
+    for member_uid in added_members:
+        user_ref = db.collection("users").document(member_uid)
+        user_doc = user_ref.get()
+        
+        if user_doc.exists:
+            user_data = user_doc.to_dict()
+            user_groups = user_data.get("groups", [])
+            if group_id not in user_groups:
+                user_groups.append(group_id)
+                user_ref.update({"groups": user_groups})
+            
+            # Notify new members
+            await websocket_manager.send_notification(member_uid, {
+                "type": "notification",
+                "notification_type": "added_to_group",
+                "group_id": group_id,
+                "group_name": group_data["name"],
+                "adder_uid": uid
+            })
+    
+    return {"message": "Members added successfully", "added_members": added_members}
+
+@app.delete("/groups/{group_id}/members/{member_uid}")
+async def remove_group_member(group_id: str, member_uid: str, request: Request):
+    """Removes a member from a group (creator only)."""
+    token = request.headers.get("Authorization", "").replace("Bearer ", "")
+    uid = verify_token(token)
+    if not token or not uid:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    # Verify group exists and user is the creator
+    group_ref = db.collection("groups").document(group_id)
+    group_doc = group_ref.get()
+    
+    if not group_doc.exists:
+        raise HTTPException(status_code=404, detail="Group not found")
+    
+    group_data = group_doc.to_dict()
+    if group_data["creator"] != uid:
+        raise HTTPException(status_code=403, detail="Only group creator can remove members")
+    
+    if member_uid == uid:
+        raise HTTPException(status_code=400, detail="Creator cannot remove themselves")
+    
+    # Remove member from group
+    current_members = group_data.get("members", [])
+    if member_uid not in current_members:
+        raise HTTPException(status_code=400, detail="User is not a group member")
+    
+    current_members.remove(member_uid)
+    group_ref.update({"members": current_members})
+    
+    # Remove group from member's groups list
+    user_ref = db.collection("users").document(member_uid)
+    user_doc = user_ref.get()
+    
+    if user_doc.exists:
+        user_data = user_doc.to_dict()
+        user_groups = user_data.get("groups", [])
+        if group_id in user_groups:
+            user_groups.remove(group_id)
+            user_ref.update({"groups": user_groups})
+        
+        # Notify removed member
+        await websocket_manager.send_notification(member_uid, {
+            "type": "notification",
+            "notification_type": "removed_from_group",
+            "group_id": group_id,
+            "group_name": group_data["name"]
+        })
+    
+    return {"message": "Member removed successfully"}

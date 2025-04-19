@@ -86,7 +86,7 @@ class WebSocketManager:
         if tasks:
             await asyncio.gather(*tasks, return_exceptions=True)
             print(f"✉️ Group message sent to {len(tasks)} members in group {group_id}")
-
+    
     async def broadcast(self, message: dict, exclude_uid: str = None):
         """Broadcasts a message to all connected clients, optionally excluding one."""
         tasks = []
@@ -101,3 +101,44 @@ class WebSocketManager:
         
         if tasks:
             await asyncio.gather(*tasks, return_exceptions=True)
+    
+    
+
+async def send_group_typing_indicator(self, group_id: str, sender_uid: str, members: List[str]):
+    """Sends a typing indicator to all group members except sender."""
+    tasks = []
+    for member_uid in members:
+        if member_uid != sender_uid and member_uid in self.active_connections:
+            websocket = self.active_connections[member_uid]
+            try:
+                tasks.append(websocket.send_json({
+                    "type": "group_typing",
+                    "group_id": group_id,
+                    "sender": sender_uid
+                }))
+            except Exception:
+                await self.disconnect(member_uid)
+    
+    if tasks:
+        await asyncio.gather(*tasks, return_exceptions=True)
+
+async def send_group_notification(self, group_id: str, notification_type: str, data: dict, members: List[str], exclude_uid: str = None):
+    """Sends group-specific notifications to members."""
+    tasks = []
+    for member_uid in members:
+        if member_uid == exclude_uid:
+            continue
+        if member_uid in self.active_connections:
+            websocket = self.active_connections[member_uid]
+            try:
+                tasks.append(websocket.send_json({
+                    "type": "group_notification",
+                    "group_id": group_id,
+                    "notification_type": notification_type,
+                    **data
+                }))
+            except Exception:
+                await self.disconnect(member_uid)
+    
+    if tasks:
+        await asyncio.gather(*tasks, return_exceptions=True)
