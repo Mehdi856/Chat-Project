@@ -127,8 +127,13 @@
             <div class="menu-container">
               <button class="menu-button">⋮</button>
               <div class="menu-dropdown">
-                <button id="delete-contact-btn">Delete Contact</button>
-                <!-- Add more menu items if needed -->
+                <!-- This will be shown in private chats -->
+                <button id="delete-contact-btn" class="private-chat-only">Delete Contact</button>
+                
+                <!-- These will be shown in group chats -->
+                <button id="add-member-btn" class="group-chat-only">Add Member</button>
+                <button id="kick-member-btn" class="group-chat-only">Kick Member</button>
+                <button id="display-members-btn" class="group-chat-only">Display Members</button>
               </div>
             </div>
             <div class="chat-actions">
@@ -158,6 +163,25 @@
       </div>
     </div>
   </div>
+  <!--  the member-modal  -->
+<div class="member-modal" id="member-modal">
+  <div class="member-modal-content">
+    <h3 id="member-modal-title">Add Member</h3>
+    <div class="search-container">
+      <input type="text" id="member-search-input" placeholder="Search users...">
+      <div id="member-search-results" class="search-results"></div>
+    </div>
+    <div id="selected-member-display" style="display: none; margin-top: 10px;">
+      Selected: <span id="selected-member-name"></span>
+      <input type="hidden" id="selected-member-uid">
+    </div>
+    <div id="display-members-container" style="display: none; max-height: 300px; overflow-y: auto;"></div>
+    <div class="member-modal-buttons">
+      <button id="member-modal-cancel">Cancel</button>
+      <button id="member-modal-confirm">Confirm</button>
+    </div>
+  </div>
+</div>
   <!-- Import scripts -->
   <script>
     document.getElementById("Create-group-small").addEventListener("click", () => {
