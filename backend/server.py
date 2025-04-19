@@ -20,6 +20,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+
 # ✅ Initialize Firebase Admin SDK
 firebase_config_json = os.getenv("FIREBASE_CONFIG")
 if not firebase_config_json:
@@ -41,7 +43,7 @@ db = firestore.client()
 websocket_manager = WebSocketManager()
 
 # ✅ Initialize Firebase Storage bucket
-bucket = storage.bucket()
+#bucket = storage.bucket()
 
 # ✅ Token Verification
 def verify_token(token: str):
@@ -818,30 +820,30 @@ async def search_users(q: str, request: Request):
         raise HTTPException(status_code=500, detail=str(e))    
 
 
-@app.post("/upload")
-async def upload_file(file: UploadFile = File(...), user_uid: str = Form(...)):
-    """Uploads a file or image to Firebase Storage and saves metadata to Firestore."""
-    try:
-        file_id = str(uuid.uuid4())
-        blob = bucket.blob(f"uploads/{file_id}_{file.filename}")
-        blob.upload_from_file(file.file, content_type=file.content_type)
-        blob.make_public()
+#@app.post("/upload")
+#async def upload_file(file: UploadFile = File(...), user_uid: str = Form(...)):
+#    """Uploads a file or image to Firebase Storage and saves metadata to Firestore."""
+#    try:
+#        file_id = str(uuid.uuid4())
+#        blob = bucket.blob(f"uploads/{file_id}_{file.filename}")
+#        blob.upload_from_file(file.file, content_type=file.content_type)
+#        blob.make_public()
+#
+#        metadata = {
+#            "file_name": file.filename,
+#            "content_type": file.content_type,
+#            "url": blob.public_url,
+#            "uid": user_uid,
+#            "size": file.spool_max_size,
+#            "timestamp": firestore.SERVER_TIMESTAMP
+#        }
+#
+#        db.collection("uploads").add(metadata)
+#
+#        return {"status": "success", "url": blob.public_url}
 
-        metadata = {
-            "file_name": file.filename,
-            "content_type": file.content_type,
-            "url": blob.public_url,
-            "uid": user_uid,
-            "size": file.spool_max_size,
-            "timestamp": firestore.SERVER_TIMESTAMP
-        }
-
-        db.collection("uploads").add(metadata)
-
-        return {"status": "success", "url": blob.public_url}
-
-    except Exception as e:
-        return {"status": "error", "detail": str(e)}
+#    except Exception as e:
+#        return {"status": "error", "detail": str(e)}
 #a new endpoint to get group details
 @app.get("/groups/{group_id}/details")
 async def get_group_details(group_id: str, request: Request):
