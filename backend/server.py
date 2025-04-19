@@ -619,22 +619,16 @@ async def get_groups(uid: str, request: Request):
         group_doc = db.collection("groups").document(group_id).get()
         if group_doc.exists:
             group_data = group_doc.to_dict()
+            
+            # Ensure members are UIDs, not usernames
             member_uids = group_data.get("members", [])
-
-            # Récupérer les usernames pour tous les membres
-            usernames = []
-            for member_uid in member_uids:
-                user_doc = db.collection("users").document(member_uid).get()
-                if user_doc.exists:
-                    user_info = user_doc.to_dict()
-                    usernames.append(user_info.get("username", member_uid))  # fallback: uid
-
+            
+            
             groups.append({
                 "id": group_id,
                 "name": group_data.get("name"),
-                "members": usernames,
-                "creator": db.collection("users").document(group_data.get("creator")).get().to_dict().get("username", group_data.get("creator"))
-
+                "members": member_uids,  # Send UIDs only
+                "creator": group_data.get("creator")
             })
 
     return {"groups": groups}
