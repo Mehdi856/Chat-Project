@@ -328,7 +328,7 @@ function renderMessage(message) {
     const messageDiv = document.createElement("div");
     messageDiv.classList.add("message", message.sender === getCurrentUser().uid ? "sent" : "received");
     
-    const timeString = formatTime(new Date(message.timestamp || Date.now()));
+    
     
     messageDiv.textContent = message.text;
     
@@ -1230,10 +1230,8 @@ function renderGroupMessage(message, members) {
     }
     
     messageDiv.innerHTML = `
-        
-            <small class="group-sender-name">${senderName}</small>
-            <div>${message.text}</div>
-        
+        <small class="group-sender-name">${senderName}</small>
+        <div>${message.text}</div>
     `;
     
     messagesContainer.appendChild(messageDiv);
