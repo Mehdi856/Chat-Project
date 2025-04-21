@@ -1,4 +1,4 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Depends, Request, UploadFile, File, Form
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Depends, Request, UploadFile, File, Form ,Header
 from fastapi.middleware.cors import CORSMiddleware
 import firebase_admin
 from firebase_admin import auth, firestore, credentials, storage
@@ -9,6 +9,9 @@ import json
 import uuid
 from datetime import datetime
 from typing import Optional, List
+import cloudinary
+import cloudinary.uploader
+
 app = FastAPI()
 
 # ✅ CORS Middleware (Allow Frontend and development origins)
@@ -42,8 +45,17 @@ db = firestore.client()
 # ✅ WebSocket Manager
 websocket_manager = WebSocketManager()
 
-# ✅ Initialize Firebase Storage bucket
-#bucket = storage.bucket()
+
+# ✅ Initialize Cloudinary
+cloudinary.config(
+    cloud_name=os.getenv("dp5bo6efq"), #CLOUDINARY_CLOUD_NAME
+    api_key=os.getenv("745961757372214"), #CLOUDINARY_API_KEY
+    api_secret=os.getenv("wCPIFMMQDMD4bFiLbk0Kvt_iy3c") #CLOUDINARY_API_SECRET
+)
+
+
+
+
 
 # ✅ Token Verification
 def verify_token(token: str):
@@ -811,33 +823,73 @@ async def search_users(q: str, request: Request):
         
         return {"users": results}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))    
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-#@app.post("/upload")
-#async def upload_file(file: UploadFile = File(...), user_uid: str = Form(...)):
-#    """Uploads a file or image to Firebase Storage and saves metadata to Firestore."""
-#    try:
-#        file_id = str(uuid.uuid4())
-#        blob = bucket.blob(f"uploads/{file_id}_{file.filename}")
-#        blob.upload_from_file(file.file, content_type=file.content_type)
-#        blob.make_public()
-#
-#        metadata = {
-#            "file_name": file.filename,
-#            "content_type": file.content_type,
-#            "url": blob.public_url,
-#            "uid": user_uid,
-#            "size": file.spool_max_size,
-#            "timestamp": firestore.SERVER_TIMESTAMP
-#        }
-#
-#        db.collection("uploads").add(metadata)
-#
-#        return {"status": "success", "url": blob.public_url}
 
-#    except Exception as e:
-#        return {"status": "error", "detail": str(e)}
+#upload
+@app.post("/upload")
+async def upload_file(
+    file: UploadFile = File(...),
+    authorization: str = Header(None)
+):
+    try:
+        if not authorization:
+            raise HTTPException(status_code=401, detail="Authorization header missing")
+
+        token = authorization.replace("Bearer ", "")
+        decoded_token = auth.verify_id_token(token)
+        uid = decoded_token["uid"]
+
+        file_bytes = await file.read()
+
+        upload_result = cloudinary.uploader.upload(file_bytes, public_id=file.filename)
+        file_url = upload_result["secure_url"]
+
+        # Sauvegarde dans Firestore avec l'UID
+        from firebase_admin import firestore
+        db = firestore.client()
+        db.collection("uploads").add({
+            "uid": uid,
+            "filename": file.filename,
+            "file_url": file_url,
+            "timestamp": datetime.utcnow()
+        })
+
+        return {"file_url": file_url, "uid": uid}
+    except Exception as e:
+        return {"error": str(e)}
+
+
+
+
+# Get_uploads
+@app.get("/uploads/{uid}")
+async def get_uploads(uid: str, request: Request):
+    """Retrieve all files uploaded by a specific user."""
+    token = request.headers.get("Authorization", "").replace("Bearer ", "")
+    if not token or not auth.verify_id_token(token):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    try:
+        db = firestore.client()
+        uploads = db.collection("uploads").where("uid", "==", uid).order_by("timestamp", direction=firestore.Query.DESCENDING).stream()
+
+
+        results = []
+        for doc in uploads:
+            data = doc.to_dict()
+            results.append({
+                "filename": data.get("filename"),
+                "file_url": data.get("file_url"),
+                "timestamp": data.get("timestamp")
+            })
+
+        return {"uploads": results}
+    except Exception as e:
+        return {"error": str(e)}
+
+
 #a new endpoint to get group details
 @app.get("/groups/{group_id}/details")
 async def get_group_details(group_id: str, request: Request):
