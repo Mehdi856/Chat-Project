@@ -240,6 +240,7 @@ function formatDate(date) {
 
 async function openChat(contact) {
     currentChatUID = contact.uid;
+    currentGroupId = null; // Ensure group ID is cleared
     messagesContainer.innerHTML = "";
     unreadMessages[contact.uid] = 0;
     updateContactUI();
@@ -248,6 +249,10 @@ async function openChat(contact) {
     activeChat.style.display = "flex";
     document.getElementById("New-contact").style.display = "none";
     document.getElementById("New-group").style.display = "none";
+    
+    // Reset menu items to private chat mode
+    document.querySelectorAll('.private-chat-only').forEach(el => el.style.display = 'block');
+    document.querySelectorAll('.group-chat-only').forEach(el => el.style.display = 'none');
     
     chatNameElement.textContent = contact.name || contact.username;
     contactUidElement.textContent = `Username: ${contact.username}`;
@@ -636,6 +641,8 @@ function setupEventListeners() {
     backButtonGroup.addEventListener("click", () => {
         document.getElementById("New-group").style.display = "none";
         noChatSelected.style.display = "flex";
+        currentChatUID = null;
+        currentGroupId = null;
     });
     
     backButtonChat.addEventListener("click", () => {
@@ -643,6 +650,8 @@ function setupEventListeners() {
         noChatSelected.style.display = "flex";
         currentChatUID = null;
         currentGroupId = null;
+        document.querySelectorAll('.private-chat-only').forEach(el => el.style.display = 'block');
+        document.querySelectorAll('.group-chat-only').forEach(el => el.style.display = 'none');
     });
     
     menuButton.addEventListener('click', function(e) {
@@ -1146,7 +1155,7 @@ function getLastGroupMessagePreview(groupId) {
 async function openGroupChat(group) {
     currentGroupId = group.id;
     currentGroupData = group;
-    currentChatUID = null;
+    currentChatUID = null; // Ensure private chat UID is cleared
     messagesContainer.innerHTML = "";
 
     // Toggle menu items
