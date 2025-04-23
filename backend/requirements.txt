@@ -9,6 +9,7 @@ python-dotenv
 gunicorn
 google-auth
 cloudinary
+python-multipart
 
 
  
