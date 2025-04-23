@@ -2332,3 +2332,86 @@ button:hover {
   color: #666;
   text-align: left;
 }
+/* Delete Group Button Styles */
+#delete-group-btn {
+  color: #ff4d4d;
+  background: none;
+  border: none;
+  padding: 8px 16px;
+  text-align: left;
+  width: 100%;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'Poppins', sans-serif;
+}
+
+#delete-group-btn:hover {
+  background-color: rgba(255, 77, 77, 0.1);
+}
+
+#delete-group-btn i {
+  width: 18px;
+  text-align: center;
+}
+/* Groups List Header Styles */
+.groups-list-header {
+  padding: 12px 15px;
+  border-bottom: 1px solid #eaeaea;
+  display: flex;
+  justify-content: center;
+}
+
+.create-group-header-btn {
+  background: linear-gradient(135deg, #6e8efb, #a777e3);
+  color: white;
+  border: none;
+  border-radius: 25px;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 2px 8px rgba(110, 142, 251, 0.3);
+}
+
+.create-group-header-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(110, 142, 251, 0.4);
+}
+
+.create-group-header-btn i {
+  font-size: 12px;
+}
+.groups-list-header {
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.groups-container {
+    overflow-y: auto;
+    height: calc(100% - 50px); /* Adjust based on your header height */
+}
+
+.create-group-header-btn {
+    background: #6e8efb;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.create-group-header-btn:hover {
+    background: #5a7df4;
+}

@@ -593,6 +593,7 @@ function setupEventListeners() {
     document.getElementById("add-member-btn").addEventListener("click", () => showMemberModal('add'));
     document.getElementById("kick-member-btn").addEventListener("click", () => showMemberModal('kick'));
     document.getElementById("display-members-btn").addEventListener("click", displayGroupMembers);
+    document.getElementById("delete-group-btn").addEventListener("click", deleteGroup);
     // Member search input
     const memberSearchInput = document.getElementById("member-search-input");
     if (memberSearchInput) {
@@ -632,7 +633,13 @@ function setupEventListeners() {
             notificationPanel.style.display = "none";
         }
     });
-
+    const createGroupHeaderBtn = document.getElementById("create-group-header-btn");
+    if (createGroupHeaderBtn) {
+        createGroupHeaderBtn.addEventListener("click", () => {
+            document.getElementById("no-chat-selected").style.display = "none";
+            document.getElementById("New-group").style.display = "flex";
+        });
+    }
     backButtonContact.addEventListener("click", () => {
         document.getElementById("New-contact").style.display = "none";
         noChatSelected.style.display = "flex";
@@ -669,6 +676,8 @@ function setupEventListeners() {
         groupsTab.classList.remove("active");
         contactsList.style.display = "block";
         groupsList.style.display = "none";
+        // Hide the header button when DMs tab is active
+        document.querySelector('.groups-list-header').style.display = 'none';
         
         // Animation reset
         contactsList.style.animation = 'none';
@@ -681,7 +690,8 @@ function setupEventListeners() {
         dmsTab.classList.remove("active");
         contactsList.style.display = "none";
         groupsList.style.display = "block";
-        
+        // Show the header button when groups tab is active
+        document.querySelector('.groups-list-header').style.display = 'flex';
         // Animation reset
         groupsList.style.animation = 'none';
         groupsList.offsetHeight; // Trigger reflow
@@ -1091,8 +1101,22 @@ async function loadGroupMessages(groupId, getLastOnly = false) {
 function renderGroups(groups) {
     const groupsList = document.getElementById("groups-list");
     
+    // Clear existing content but keep the header
+    groupsList.innerHTML = `
+        <div class="groups-list-header">
+            <button id="create-group-header-btn" class="create-group-header-btn">
+                <i class="fas fa-plus"></i> Create New Group
+            </button>
+        </div>
+        <div class="groups-container" id="groups-container"></div>
+    `;
+
+    // Get the container where groups will be listed
+    const groupsContainer = document.getElementById("groups-container");
+
     if (groups.length === 0) {
-        groupsList.innerHTML = `
+        // Show empty state if no groups
+        groupsContainer.innerHTML = `
             <div class="empty-state">
                 <i class="fas fa-users empty-icon"></i>
                 <p>No groups available yet</p>
@@ -1100,47 +1124,51 @@ function renderGroups(groups) {
                 <button id="create-group-small" class="create-group-small">Create Group</button>
             </div>
         `;
-        document.getElementById("create-group-small").addEventListener("click", showCreateGroupForm);
-        return;
+    } else {
+        // Render each group
+        groups.forEach(group => {
+            const groupItem = document.createElement("div");
+            groupItem.classList.add("contact-item");
+            groupItem.dataset.groupId = group.id;
+            
+            const firstLetter = group.name?.charAt(0).toUpperCase() || "G";
+            const colors = ['#6e8efb', '#a777e3', '#4CAF50', '#FF5722', '#607D8B'];
+            const colorIndex = group.name?.length % colors.length || 0;
+            const avatarColor = colors[colorIndex];
+            
+            const lastMessage = getLastGroupMessagePreview(group.id);
+            const lastMessageText = lastMessage?.text || "No messages yet";
+            
+            let timeString = "";
+            if (lastMessage?.timestamp) {
+                timeString = formatMessageTime(new Date(lastMessage.timestamp));
+            }
+            
+            groupItem.innerHTML = `
+                <div class="contact-avatar" style="background: ${avatarColor}">${firstLetter}</div>
+                <div class="contact-info">
+                    <div class="contact-name-row">
+                        <span class="contact-name">${group.name}</span>
+                        <span class="message-time">${timeString}</span>
+                    </div>
+                    <div class="contact-preview">${lastMessageText}</div>               
+                </div>
+                <span class="unread-count" style="display: none">
+                    0
+                </span>
+            `;
+            
+            groupItem.addEventListener("click", () => openGroupChat(group));
+            groupsContainer.appendChild(groupItem);
+        });
     }
 
-    groupsList.innerHTML = "";
-    
-    groups.forEach(group => {
-        const groupItem = document.createElement("div");
-        groupItem.classList.add("contact-item");
-        groupItem.dataset.groupId = group.id;
-        
-        const firstLetter = group.name?.charAt(0).toUpperCase() || "G";
-        const colors = ['#6e8efb', '#a777e3', '#4CAF50', '#FF5722', '#607D8B'];
-        const colorIndex = group.name?.length % colors.length || 0;
-        const avatarColor = colors[colorIndex];
-        
-        const lastMessage = getLastGroupMessagePreview(group.id);
-        const lastMessageText = lastMessage?.text || "No messages yet";
-        
-        let timeString = "";
-        if (lastMessage?.timestamp) {
-            timeString = formatMessageTime(new Date(lastMessage.timestamp));
-        }
-        
-        groupItem.innerHTML = `
-            <div class="contact-avatar" style="background: ${avatarColor}">${firstLetter}</div>
-            <div class="contact-info">
-                <div class="contact-name-row">
-                    <span class="contact-name">${group.name}</span>
-                    <span class="message-time">${timeString}</span>
-                </div>
-                <div class="contact-preview">${lastMessageText}</div>               
-            </div>
-            <span class="unread-count" style="display: none">
-                0
-            </span>
-        `;
-        
-        groupItem.addEventListener("click", () => openGroupChat(group));
-        groupsList.appendChild(groupItem);
-    });
+    // Set up event listeners for both create group buttons
+    document.getElementById("create-group-header-btn").addEventListener("click", showCreateGroupForm);
+    const smallCreateBtn = document.getElementById("create-group-small");
+    if (smallCreateBtn) {
+        smallCreateBtn.addEventListener("click", showCreateGroupForm);
+    }
 }
 
 function getLastGroupMessagePreview(groupId) {
@@ -1161,7 +1189,12 @@ async function openGroupChat(group) {
     // Toggle menu items
     document.querySelectorAll('.private-chat-only').forEach(el => el.style.display = 'none');
     document.querySelectorAll('.group-chat-only').forEach(el => el.style.display = 'block');
-    
+    // Show delete button only for creator
+    const user = getCurrentUser();
+    const deleteGroupBtn = document.getElementById("delete-group-btn");
+    if (deleteGroupBtn) {
+        deleteGroupBtn.style.display = group.creator === user.uid ? "block" : "none";
+    }
     noChatSelected.style.display = "none";
     activeChat.style.display = "flex";
     
@@ -1708,5 +1741,46 @@ async function displayCurrentMembersForKick() {
     } catch (error) {
         console.error("Failed to load members for kicking:", error);
         membersContainer.innerHTML = "<div class='error-message'>Failed to load members</div>";
+    }
+}
+async function deleteGroup() {
+    if (!currentGroupId) {
+        alert("No group selected!");
+        return;
+    }
+    
+    const user = getCurrentUser();
+    if (!user?.token) {
+        alert("Invalid user authentication!");
+        return;
+    }
+
+    if (!confirm("Are you sure you want to delete this group? This action cannot be undone.")) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`${BACKEND_URL}/groups/${currentGroupId}`, {
+            method: "DELETE",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${user.token}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to delete group: ${response.statusText}`);
+        }
+
+        alert("🗑️ Group deleted successfully!");
+        
+        // Close chat and refresh groups list
+        activeChat.style.display = "none";
+        noChatSelected.style.display = "flex";
+        currentGroupId = null;
+        await loadGroups();
+    } catch (error) {
+        console.error("❌ Error deleting group:", error);
+        alert("Failed to delete group. Try again.");
     }
 }
