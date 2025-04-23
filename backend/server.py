@@ -1052,3 +1052,49 @@ async def get_user_details(uid: str, request: Request):
         "name": user_data.get("name"),
         "username": user_data.get("username", "")
     }
+@app.delete("/groups/{group_id}")
+async def delete_group(group_id: str, request: Request):
+    """Deletes a group (creator only)."""
+    # Verify the token from Authorization header
+    token = request.headers.get("Authorization", "").replace("Bearer ", "")
+    uid = verify_token(token)
+    if not token or not uid:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    # Get group data
+    group_ref = db.collection("groups").document(group_id)
+    group_doc = group_ref.get()
+    
+    if not group_doc.exists:
+        raise HTTPException(status_code=404, detail="Group not found")
+    
+    group_data = group_doc.to_dict()
+    
+    # Verify user is the creator
+    if group_data["creator"] != uid:
+        raise HTTPException(status_code=403, detail="Only group creator can delete the group")
+    
+    try:
+        # Delete group messages first
+        messages_query = db.collection("group_messages").where("group_id", "==", group_id)
+        for message in messages_query.stream():
+            message.reference.delete()
+        
+        # Remove group from all members' groups list
+        for member_uid in group_data.get("members", []):
+            user_ref = db.collection("users").document(member_uid)
+            user_doc = user_ref.get()
+            
+            if user_doc.exists:
+                user_data = user_doc.to_dict()
+                user_groups = user_data.get("groups", [])
+                if group_id in user_groups:
+                    user_groups.remove(group_id)
+                    user_ref.update({"groups": user_groups})
+        
+        # Finally delete the group
+        group_ref.delete()
+        
+        return {"message": "Group deleted successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
