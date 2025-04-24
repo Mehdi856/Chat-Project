@@ -636,8 +636,12 @@ function setupEventListeners() {
     const createGroupHeaderBtn = document.getElementById("create-group-header-btn");
     if (createGroupHeaderBtn) {
         createGroupHeaderBtn.addEventListener("click", () => {
+            noChatSelected.style.display = "none";
+            activeChat.style.display = "none";
             document.getElementById("no-chat-selected").style.display = "none";
             document.getElementById("New-group").style.display = "flex";
+            currentChatUID = null;
+            currentGroupId = null;
         });
     }
     backButtonContact.addEventListener("click", () => {
@@ -1346,8 +1350,13 @@ function showGroupTypingIndicator(groupId, senderUid) {
     }
 }
 function showCreateGroupForm() {
+    noChatSelected.style.display = "none";
+    activeChat.style.display = "none";
     document.getElementById("no-chat-selected").style.display = "none";
     document.getElementById("New-group").style.display = "flex";
+    currentChatUID = null;
+    currentGroupId = null;
+
 }
 
 async function createGroup() {
@@ -1427,7 +1436,15 @@ function showMemberModal(action) {
 }
 
 function closeMemberModal() {
-    document.getElementById("member-modal").style.display = "none";
+    const modal = document.getElementById("member-modal");
+    modal.style.display = "none";
+    
+    // Reset search state
+    document.getElementById("member-search-input").value = "";
+    document.getElementById("member-search-results").style.display = "none";
+    document.getElementById("member-search-results").innerHTML = "";
+    document.getElementById("selected-member-display").style.display = "none";
+    selectedMember = null;
 }
 
 async function searchUsersForMember(e) {
@@ -1436,9 +1453,9 @@ async function searchUsersForMember(e) {
     
     // Clear previous results
     resultsContainer.innerHTML = "";
+    resultsContainer.style.display = "none";
     
     if (searchTerm.length < 2) {
-        resultsContainer.style.display = "none";
         return;
     }
 
@@ -1456,13 +1473,9 @@ async function searchUsersForMember(e) {
         
         if (results.users && results.users.length > 0) {
             displayMemberSearchResults(results.users);
-            resultsContainer.style.display = "block";
-        } else {
-            resultsContainer.style.display = "none";
         }
     } catch (error) {
         console.error("Failed to search users:", error);
-        resultsContainer.style.display = "none";
     }
 }
 
@@ -1470,19 +1483,19 @@ function displayMemberSearchResults(users) {
     const resultsContainer = document.getElementById("member-search-results");
     resultsContainer.innerHTML = "";
     
-    if (users.length === 0) {
-        resultsContainer.innerHTML = "<div class='search-result-item'>No users found</div>";
+    // Filter out current user and existing members
+    const currentUser = getCurrentUser();
+    const filteredUsers = users.filter(user => {
+        return user.uid !== currentUser?.uid && 
+               !(currentGroupData && currentGroupData.members.includes(user.uid));
+    });
+
+    if (filteredUsers.length === 0) {
+        resultsContainer.style.display = "none";
         return;
     }
 
-    users.forEach(user => {
-        // Skip current user and already added members
-        const currentUser = getCurrentUser();
-        if (user.uid === currentUser?.uid || 
-            (currentGroupData && currentGroupData.members.includes(user.uid))) {
-            return;
-        }
-
+    filteredUsers.forEach(user => {
         const resultItem = document.createElement("div");
         resultItem.classList.add("member-search-item");
         
@@ -1509,11 +1522,15 @@ function displayMemberSearchResults(users) {
                 `${user.name || user.username} (@${user.username})`;
             document.getElementById("selected-member-uid").value = user.uid;
             document.getElementById("selected-member-display").style.display = "block";
+            resultsContainer.style.display = "none";
             resultsContainer.innerHTML = "";
+            document.getElementById("member-search-input").value = "";
         });
         
         resultsContainer.appendChild(resultItem);
     });
+    
+    resultsContainer.style.display = "block";
 }
 
 async function confirmMemberAction() {
