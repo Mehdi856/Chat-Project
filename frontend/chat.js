@@ -1105,27 +1105,26 @@ async function loadGroupMessages(groupId, getLastOnly = false) {
 function renderGroups(groups) {
     const groupsList = document.getElementById("groups-list");
     
-    // Clear existing content but keep the header
-    groupsList.innerHTML = `
-        <div class="groups-list-header">
-            <button id="create-group-header-btn" class="create-group-header-btn">
-                <i class="fas fa-plus"></i> Create New Group
-            </button>
-        </div>
-        <div class="groups-container" id="groups-container"></div>
-    `;
+    // Clear existing content
+    groupsList.innerHTML = '';
 
-    // Get the container where groups will be listed
-    const groupsContainer = document.getElementById("groups-container");
-
+    // Add the header first
+    const header = document.createElement('div');
+    header.className = 'groups-list-header';
+    groupsList.appendChild(header);
+    
+    // Create the groups container
+    const groupsContainer = document.createElement('div');
+    groupsContainer.className = 'groups-container';
+    
     if (groups.length === 0) {
-        // Show empty state if no groups
+        // When no groups, show the empty state
         groupsContainer.innerHTML = `
             <div class="empty-state">
                 <i class="fas fa-users empty-icon"></i>
                 <p>No groups available yet</p>
                 <small>Create a group to start chatting with multiple people</small>
-                <button id="create-group-small" class="create-group-small">Create Group</button>
+                <button id="Create-group-small" class="create-group-small">Create Group</button>
             </div>
         `;
     } else {
@@ -1166,10 +1165,20 @@ function renderGroups(groups) {
             groupsContainer.appendChild(groupItem);
         });
     }
-
-    // Set up event listeners for both create group buttons
-    document.getElementById("create-group-header-btn").addEventListener("click", showCreateGroupForm);
-    const smallCreateBtn = document.getElementById("create-group-small");
+    
+    // Add the groups container to the list
+    groupsList.appendChild(groupsContainer);
+    
+    // Always add the floating action button at the end
+    const fabBtn = document.createElement('button');
+    fabBtn.className = 'create-group-fab';
+    fabBtn.id = 'create-group-fab';
+    fabBtn.innerHTML = '<i class="fas fa-plus"></i>';
+    fabBtn.addEventListener("click", showCreateGroupForm);
+    groupsList.appendChild(fabBtn);
+    
+    // Set up event listener for small create button if it exists
+    const smallCreateBtn = document.getElementById("Create-group-small");
     if (smallCreateBtn) {
         smallCreateBtn.addEventListener("click", showCreateGroupForm);
     }
