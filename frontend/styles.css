@@ -863,22 +863,30 @@ button:hover {
 }
 
 /* Contact Item Styles */
+
 .contact-item {
   display: flex;
-  padding: 12px 15px;
+  padding: 14px 15px;
   align-items: center;
-  border-bottom: 1px solid #f0f0f0;
   cursor: pointer;
   transition: all 0.2s ease;
   position: relative;
+  background-color: #f7f7f9;
+  border-radius: 12px;
+  margin: 8px 10px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  height: 70px; /* Consistent height */
 }
 
 .contact-item:hover {
-  background-color: #f9f9f9;
+  background-color: #f0f0f5;
+  transform: translateY(-2px);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.07);
 }
 
 .contact-item.active {
-  background-color: #f0f4ff;
+  background-color: #e8ecff;
+  border-left: 3px solid #6e8efb;
 }
 
 .contact-avatar {
@@ -1716,8 +1724,12 @@ button:hover {
 }
 
 .contacts-list, .groups-list {
-  animation: fadeIn 0.3s ease forwards;
+  overflow-y: auto;
+  flex: 1;
+  padding-top: 5px;
 }
+
+
 
 /* Empty state styling for groups */
 .empty-state {
@@ -2357,37 +2369,60 @@ button:hover {
   text-align: center;
 }
 /* Groups List Header Styles */
-.groups-list-header {
-  padding: 12px 15px;
-  border-bottom: 1px solid #eaeaea;
-  display: flex;
-  justify-content: center;
-}
 
-.create-group-header-btn {
+.create-group-fab {
+  position: absolute; /* Change from fixed to absolute */
+  bottom: 15px; /* Slightly higher than before */
+  right: 15px; /* Slightly more to the left */
+  width: 48px; /* Smaller size */
+  height: 48px; /* Smaller size */
+  border-radius: 50%;
   background: linear-gradient(135deg, #6e8efb, #a777e3);
   color: white;
-  border: none;
-  border-radius: 25px;
-  padding: 10px 20px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.3s ease;
   display: flex;
   align-items: center;
-  gap: 8px;
-  box-shadow: 0 2px 8px rgba(110, 142, 251, 0.3);
-}
-
-.create-group-header-btn:hover {
-  transform: translateY(-2px);
+  justify-content: center;
   box-shadow: 0 4px 12px rgba(110, 142, 251, 0.4);
+  cursor: pointer;
+  z-index: 100;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  border: none;
 }
 
-.create-group-header-btn i {
-  font-size: 12px;
+.create-group-fab i {
+  font-size: 20px; /* Slightly smaller icon */
 }
+
+.create-group-fab:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 16px rgba(110, 142, 251, 0.5);
+}
+
+.sidebar {
+  width: 320px;
+  background-color: white;
+  border-right: 1px solid #eaeaea;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Adjust position to be within the sidebar container */
+.sidebar .create-group-fab {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  z-index: 100;
+}
+
+/* Ensure the sidebar has enough bottom padding to not hide the button */
+.groups-list {
+  overflow-y: auto;
+  flex: 1;
+  padding-top: 5px;
+  position: relative;
+}
+
 .groups-list-header {
     padding: 10px;
     border-bottom: 1px solid #eee;
@@ -2396,22 +2431,58 @@ button:hover {
 }
 
 .groups-container {
-    overflow-y: auto;
-    height: calc(100% - 50px); /* Adjust based on your header height */
+  height: auto;
+  min-height: calc(100% - 120px); /* Adjust based on your header height and button space */
 }
 
-.create-group-header-btn {
-    background: #6e8efb;
-    color: white;
-    border: none;
-    padding: 8px 12px;
-    border-radius: 4px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 5px;
+.groups-list .group-item {
+  display: flex;
+  padding: 14px 15px;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  background-color: #f7f7f9;
+  border-radius: 12px;
+  margin: 8px 10px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  height: 70px; /* Consistent height */
 }
 
-.create-group-header-btn:hover {
-    background: #5a7df4;
+.groups-list .group-item:hover {
+  background-color: #f0f0f5;
+  transform: translateY(-2px);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.07);
+}
+
+.groups-list .group-item.active {
+  background-color: #e8ecff;
+  border-left: 3px solid #6e8efb;
+}
+
+
+.contact-item, .groups-list .group-item {
+  border-bottom: none;
+}
+
+/* Fix any avatar alignment issues */
+.contact-avatar, .group-avatar {
+  margin-right: 15px;
+}
+
+/* Ensure content is properly aligned vertically */
+.contact-info, .group-info {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/* Ensure tabs stay consistent when switching */
+.tabs-container {
+  display: flex;
+  background: rgba(110, 142, 251, 0.1);
+  border-radius: 30px;
+  padding: 5px;
+  height: 48px;
+  margin: 0 15px 10px 15px;
 }
