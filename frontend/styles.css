@@ -11,7 +11,7 @@ body {
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  background: linear-gradient(135deg, #6e8efb, #a777e3);
+  background: linear-gradient(135deg, #2e57df, #0c1636);
   padding: 15px;
 }
 
@@ -50,7 +50,7 @@ body {
 
 .welcome-container {
   right: 0;
-  background: linear-gradient(135deg, #a777e3, #6e8efb);
+  background: linear-gradient(135deg, #0c1636, #2e57df);
   text-align: center;
   padding: 40px;
   color: white;
@@ -85,7 +85,7 @@ p {
   height: 45px;
   width: 45px;
   text-decoration: none;
-  color: #6e8efb;
+  color: #2e57df;
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
   transition: all 0.3s ease;
   font-size: 18px;
@@ -134,7 +134,7 @@ input.invalid {
 button {
   border-radius: 30px;
   border: none;
-  background: linear-gradient(45deg, #6e8efb, #a777e3);
+  background: linear-gradient(45deg, #2e57df, #0c1636);
   color: white;
   font-size: 14px;
   font-weight: 600;
@@ -183,7 +183,7 @@ form {
 }
 
 .forgot-password {
-  color: #6e8efb;
+  color: #2e57df;
   font-size: 13px;
   text-decoration: none;
   margin: 15px 0;
@@ -192,7 +192,7 @@ form {
 }
 
 .forgot-password:hover {
-  color: #a777e3;
+  color: #0c1636;
   transform: translateY(-2px);
 }
 
@@ -226,14 +226,14 @@ form {
 }
 
 .toggle-form a {
-  color: #6e8efb;
+  color: #2e57df;
   font-weight: 600;
   text-decoration: none;
   transition: all 0.3s ease;
 }
 
 .toggle-form a:hover {
-  color: #a777e3;
+  color: #0c1636;
   text-decoration: underline;
 }
 
@@ -308,7 +308,7 @@ form {
 }
 
 .message.info {
-  background: linear-gradient(135deg, #6e8efb, #a777e3);
+  background: linear-gradient(135deg, #2e57df, #0c1636);
   color: white;
 }
 
@@ -372,7 +372,7 @@ form {
   align-items: center;
   gap: 10px;
   height: 60px;
-  background: linear-gradient(135deg, #6e8efb, #a777e3);
+  background: linear-gradient(135deg, #2e57df, #0c1636);
   color: white;
 }
 
@@ -615,7 +615,7 @@ body {
 
 /* Updated Header Styles */
 header {
-  background: linear-gradient(135deg, #6e8efb, #a777e3);
+  background: linear-gradient(135deg, #2e57df, #0c1636);
   color: white;
   padding: 16px 25px;
   display: grid;
@@ -800,7 +800,7 @@ header h1 {
 
 /* Button Styles */
 button {
-  background: linear-gradient(135deg, #6e8efb, #a777e3);
+  background: linear-gradient(135deg, #2e57df, #0c1636);
   color: white;
   border: none;
   padding: 10px 20px;
@@ -852,7 +852,7 @@ button:hover {
 }
 
 .search-container input:focus {
-  border-color: #6e8efb;
+  border-color: #2e57df;
   box-shadow: 0 0 0 3px rgba(110, 142, 251, 0.1);
   background-color: white;
 }
@@ -886,7 +886,7 @@ button:hover {
 
 .contact-item.active {
   background-color: #e8ecff;
-  border-left: 3px solid #6e8efb;
+  border-left: 3px solid #2e57df;
 }
 
 .contact-avatar {
@@ -901,7 +901,7 @@ button:hover {
   font-size: 18px;
   margin-right: 12px;
   flex-shrink: 0;
-  background: linear-gradient(135deg, #6e8efb, #a777e3);
+  background: linear-gradient(135deg, #2e57df, #0c1636);
 }
 
 .contact-info {
@@ -945,7 +945,7 @@ button:hover {
   right: 15px;
   top: 70%;
   transform: translateY(-50%);
-  background-color: #6e8efb;
+  background-color: #2e57df;
   color: white;
   border-radius: 50%;
   min-width: 25px;
@@ -1035,7 +1035,7 @@ button:hover {
   font-size: 20px;
   cursor: pointer;
   margin-right: 15px;
-  color: #6e8efb;
+  color: #2e57df;
   transition: all 0.2s ease;
 }
 
@@ -1068,7 +1068,7 @@ button:hover {
 
 .typing-indicator {
   font-size: 12px;
-  color: #6e8efb;
+  color: #2e57df;
   font-style: italic;
   margin-top: 2px;
   display: none;
@@ -1130,7 +1130,7 @@ button:hover {
 }
 
 .message.sent .message-content {
-  background: linear-gradient(135deg, #6e8efb, #a777e3);
+  background: linear-gradient(135deg, #2e57df, #0c1636);
   color: white;
   border-top-right-radius: 4px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
@@ -1179,7 +1179,7 @@ button:hover {
 }
 
 #message-input:focus {
-  border-color: #6e8efb;
+  border-color: #2e57df;
   box-shadow: 0 2px 8px rgba(110, 142, 251, 0.15);
   background-color: white;
 }
@@ -1192,7 +1192,7 @@ button:hover {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #6e8efb, #a777e3);
+  background: linear-gradient(135deg, #2e57df, #0c1636);
   box-shadow: 0 3px 10px rgba(110, 142, 251, 0.3);
   transition: all 0.3s ease;
   position: relative;
@@ -1249,7 +1249,7 @@ button:hover {
 }
 
 #contact-uid-input:focus, #group-name-input:focus {
-  border-color: #6e8efb;
+  border-color: #2e57df;
   box-shadow: 0 0 0 3px rgba(110, 142, 251, 0.1);
   background-color: white;
   outline: none;
@@ -1264,7 +1264,7 @@ button:hover {
 .contact-buttons button {
   flex: 1;
   padding: 6px 0;
-  background-color: #6e8efb;
+  background-color: #2e57df;
   color: white;
   border: none;
   border-radius: 5px;
@@ -1340,7 +1340,8 @@ button:hover {
   border-radius: 12px;
   overflow: hidden;
   z-index: 100;
-  min-width: 180px;
+  min-width: 240px; /* Increased min-width */
+  padding: 12px; /* Added padding */
   animation: menuAppear 0.2s ease-out;
 }
 
@@ -1389,7 +1390,7 @@ button:hover {
 
 #add-contact-btn, #create-group-btn {
   padding: 12px 24px;
-  background: linear-gradient(135deg, #6e8efb, #a777e3);
+  background: linear-gradient(135deg, #2e57df, #0c1636);
   color: white;
   border: none;
   border-radius: 12px;
@@ -1453,7 +1454,7 @@ button:hover {
   border: none;
   font-size: 16px;
   cursor: pointer;
-  color: #6e8efb;
+  color: #2e57df;
   width: 32px;
   height: 32px;
   display: flex;
@@ -1631,7 +1632,7 @@ button:hover {
 }
 
 .search-wrapper:focus-within {
-  border-color: #6e8efb;
+  border-color: #2e57df;
   box-shadow: 0 0 0 3px rgba(110, 142, 251, 0.1);
   background-color: white;
 }
@@ -1648,7 +1649,7 @@ button:hover {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #6e8efb;
+  color: #2e57df;
   cursor: pointer;
   transition: all 0.3s ease;
   padding: 0;
@@ -1694,13 +1695,13 @@ button:hover {
 }
 
 .tab-button:hover {
-  color: #6e8efb;
+  color: #2e57df;
   transform: translateY(0);
   box-shadow: none;
 }
 
 .tab-button.active {
-  background: linear-gradient(135deg, #6e8efb, #a777e3);
+  background: linear-gradient(135deg, #2e57df, #0c1636);
   color: white;
   box-shadow: 0 4px 15px rgba(110, 142, 251, 0.2);
 }
@@ -1772,7 +1773,7 @@ button:hover {
   margin-top: 15px;
   padding: 8px 16px;
   font-size: 12px;
-  background: linear-gradient(45deg, #6e8efb, #a777e3);
+  background: linear-gradient(45deg, #2e57df, #0c1636);
   color: white;
   border: none;
   border-radius: 20px;
@@ -1834,7 +1835,7 @@ button:hover {
 }
 
 .username-modal-content button {
-  background-color: #6e8efb;
+  background-color: #2e57df;
   color: white;
   border: none;
   padding: 0.8rem 1.5rem;
@@ -1937,7 +1938,7 @@ button:hover {
 }
 
 .name-change-input:focus {
-  border-color: #6e8efb;
+  border-color: #2e57df;
   box-shadow: 0 0 0 3px rgba(110, 142, 251, 0.15), inset 0 2px 5px rgba(0, 0, 0, 0.05);
   outline: none;
 }
@@ -1975,7 +1976,7 @@ button:hover {
 }
 
 .name-change-submit {
-  background: linear-gradient(135deg, #6e8efb, #a777e3);
+  background: linear-gradient(135deg, #2e57df, #0c1636);
   color: white;
   box-shadow: 0 5px 15px rgba(110, 142, 251, 0.3);
 }
@@ -2008,7 +2009,7 @@ button:hover {
 
 #user-search-input:focus {
   outline: none;
-  border-color: #6e8efb;
+  border-color: #2e57df;
   background-color: #fff;
   box-shadow: 0 2px 10px rgba(110, 142, 251, 0.1);
 }
@@ -2224,7 +2225,7 @@ button:hover {
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  background: #6e8efb;
+  background: #2e57df;
   color: white;
   display: flex;
   align-items: center;
@@ -2263,7 +2264,7 @@ button:hover {
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #6e8efb, #a777e3);
+  background: linear-gradient(135deg, #2e57df, #0c1636);
   color: white;
   display: flex;
   align-items: center;
@@ -2312,7 +2313,7 @@ button:hover {
 }
 
 .message.sent {
-  background-color: #6e8efb;
+  background-color: #2e57df;
   color: white;
   margin-left: auto;
   border-bottom-right-radius: 4px;
@@ -2377,7 +2378,7 @@ button:hover {
   width: 48px; /* Smaller size */
   height: 48px; /* Smaller size */
   border-radius: 50%;
-  background: linear-gradient(135deg, #6e8efb, #a777e3);
+  background: linear-gradient(135deg, #2e57df, #0c1636);
   color: white;
   display: flex;
   align-items: center;
@@ -2457,7 +2458,7 @@ button:hover {
 
 .groups-list .group-item.active {
   background-color: #e8ecff;
-  border-left: 3px solid #6e8efb;
+  border-left: 3px solid #2e57df;
 }
 
 
@@ -2485,4 +2486,76 @@ button:hover {
   padding: 5px;
   height: 48px;
   margin: 0 15px 10px 15px;
+}
+/* Group Action Buttons Container */
+.group-action-buttons {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  padding: 15px;
+  background-color: rgba(110, 142, 251, 0.05);
+  border-radius: 16px;
+  margin: 15px auto;
+  width: fit-content;
+}
+
+.group-action-buttons-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px; /* Space between buttons */
+  padding: 8px 0;
+}
+
+.group-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+  color: #2250e7;
+}
+
+.group-action-btn:hover {
+  background-color: #f5f5f5;
+  transform: translateY(-1px);
+}
+
+.group-action-btn i {
+  margin-right: 10px;
+  width: 20px;
+  text-align: center;
+  font-size: 16px;
+}
+
+/* Delete button specific styling */
+.group-action-btn.delete-btn {
+  color: #ff5252;
+}
+
+.group-action-btn.delete-btn:hover {
+  background-color: rgba(255, 82, 82, 0.1);
+}
+
+/* Private chat button styling */
+#delete-contact-btn {
+  width: 100%;
+  padding: 10px 16px;
+  border-radius: 8px;
+  text-align: left;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #ff5252;
+  transition: all 0.2s ease;
+}
+
+#delete-contact-btn:hover {
+  background-color: rgba(255, 82, 82, 0.1);
 }
