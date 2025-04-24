@@ -1612,12 +1612,15 @@ async function displayGroupMembers() {
     const searchContainer = modal.querySelector(".search-container");
     const selectedDisplay = document.getElementById("selected-member-display");
     const membersContainer = document.getElementById("display-members-container");
+    const confirmButton = document.getElementById("member-modal-confirm");
+    const cancelButton = document.getElementById("member-modal-cancel");
     
     // Setup modal for display mode
     title.textContent = "Group Members";
     searchContainer.style.display = "none";
     selectedDisplay.style.display = "none";
-    document.getElementById("member-modal-confirm").style.display = "none";
+    confirmButton.style.display = "none"; // Hide confirm button
+    cancelButton.textContent = "Close"; // Change text to "Close"
     membersContainer.style.display = "block";
     
     // Clear and populate members list
@@ -1647,14 +1650,8 @@ async function displayGroupMembers() {
         
         membersContainer.appendChild(memberItem);
     });
-// Add close button
-const closeButton = document.createElement("button");
-closeButton.textContent = "Close";
-closeButton.style.marginTop = "10px";
-closeButton.addEventListener("click", closeMemberModal);
-membersContainer.appendChild(closeButton);
 
-modal.style.display = "flex";
+    modal.style.display = "flex";
 }
 
 async function getGroupMembersDetails(memberUids) {

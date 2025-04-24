@@ -2418,14 +2418,18 @@ button:hover {
 
 /* Ensure the sidebar has enough bottom padding to not hide the button */
 .groups-list {
+  padding-top: 0 !important; /* Remove top padding */
+  margin-top: 5px !important; /* Pull up to match contacts */
   overflow-y: auto;
   flex: 1;
-  padding-top: 5px;
   position: relative;
 }
 
 .groups-list-header {
-    padding: 10px;
+    height: 0; /* Make header take no space */
+    padding: 0; /* Remove padding */
+    overflow: visible; /* Allow FAB button to show */
+    position: relative; /* Needed for absolute positioning */
     border-bottom: 1px solid #eee;
     display: flex;
     justify-content: flex-end;
