@@ -134,15 +134,25 @@
               <button class="menu-button">⋮</button>
               <div class="menu-dropdown">
                 <!-- This will be shown in private chats -->
-                <button id="delete-contact-btn" class="private-chat-only">Delete Contact</button>
+                <button id="delete-contact-btn" class="private-chat-only">
+                  <i class="fas fa-trash"></i> Delete Contact
+                </button>
                 
                 <!-- These will be shown in group chats -->
-                <button id="add-member-btn" class="group-chat-only">Add Member</button>
-                <button id="kick-member-btn" class="group-chat-only">Kick Member</button>
-                <button id="display-members-btn" class="group-chat-only">Display Members</button>
-                <button id="delete-group-btn" class="group-chat-only">
-                  <i class="fas fa-trash"></i> Delete Group
-                </button>
+                <div class="group-chat-only group-action-buttons-container">
+                  <button id="add-member-btn" class="group-action-btn">
+                    <i class="fas fa-user-plus"></i> Add Member
+                  </button>
+                  <button id="kick-member-btn" class="group-action-btn">
+                    <i class="fas fa-user-minus"></i> Kick Member
+                  </button>
+                  <button id="display-members-btn" class="group-action-btn">
+                    <i class="fas fa-users"></i> View Members
+                  </button>
+                  <button id="delete-group-btn" class="group-action-btn delete-btn">
+                    <i class="fas fa-trash"></i> Delete Group
+                  </button>
+                </div>
               </div>
             </div>
             <div class="chat-actions">
