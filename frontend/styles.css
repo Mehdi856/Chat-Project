@@ -860,6 +860,15 @@ button:hover {
 .contacts-list {
   overflow-y: auto;
   flex: 1;
+  position: relative;
+  padding-top: 0; /* Remove the padding */
+}
+.contacts-list::before {
+  content: "";
+  display: block;
+  height: 1px;
+  background-color: #eaeaea;
+  margin: 0 15px 8px 15px; /* Match the groups list spacing */
 }
 
 /* Contact Item Styles */
