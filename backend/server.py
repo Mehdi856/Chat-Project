@@ -560,7 +560,7 @@ async def respond_to_contact_request(request_id: str, response_data: dict, reque
 # ✅ Create Group
 @app.post("/groups")
 async def create_group(group_data: dict, request: Request):
-    """Creates a new group chat."""
+    """Creates a new group chat with private/public option."""
     # Verify the token from Authorization header
     token = request.headers.get("Authorization", "").replace("Bearer ", "")
     uid = verify_token(token)
@@ -569,6 +569,7 @@ async def create_group(group_data: dict, request: Request):
 
     group_name = group_data.get("name")
     members = group_data.get("members", [])
+    is_private = group_data.get("is_private", False)  # Default to public if not specified
 
     if not group_name:
         raise HTTPException(status_code=400, detail="Group name is required")
@@ -577,11 +578,12 @@ async def create_group(group_data: dict, request: Request):
     if uid not in members:
         members.append(uid)
 
-    # Create group in Firestore
+    # Create group in Firestore with privacy setting
     group_ref = db.collection("groups").add({
         "name": group_name,
         "creator": uid,
         "members": members,
+        "is_private": is_private,  # Add privacy flag
         "created_at": firestore.SERVER_TIMESTAMP
     })
 
@@ -605,10 +607,11 @@ async def create_group(group_data: dict, request: Request):
                     "notification_type": "new_group",
                     "group_id": group_id,
                     "group_name": group_name,
-                    "creator": uid
+                    "creator": uid,
+                    "is_private": is_private
                 })
 
-    return {"message": "Group created successfully", "group_id": group_id}
+    return {"message": "Group created successfully", "group_id": group_id, "is_private": is_private}
 
 
 # ✅ Get Groups
@@ -893,7 +896,7 @@ async def get_uploads(uid: str, request: Request):
 #a new endpoint to get group details
 @app.get("/groups/{group_id}/details")
 async def get_group_details(group_id: str, request: Request):
-    """Returns detailed information about a specific group."""
+    """Returns detailed information about a specific group including privacy status."""
     token = request.headers.get("Authorization", "").replace("Bearer ", "")
     uid = verify_token(token)
     if not token or not uid:
@@ -924,7 +927,8 @@ async def get_group_details(group_id: str, request: Request):
         "name": group_data["name"],
         "creator": group_data["creator"],
         "members": members_info,
-        "created_at": group_data["created_at"]
+        "created_at": group_data["created_at"],
+        "is_private": group_data.get("is_private", False)  # Include privacy status
     }
 @app.post("/groups/{group_id}/members")
 async def add_group_members(group_id: str, member_data: dict, request: Request):
