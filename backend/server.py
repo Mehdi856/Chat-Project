@@ -643,7 +643,8 @@ async def get_groups(uid: str, request: Request):
                 "id": group_id,
                 "name": group_data.get("name"),
                 "members": member_uids,  # Send UIDs only
-                "creator": group_data.get("creator")
+                "creator": group_data.get("creator"),
+                "is_private": group_data.get("is_private", False)
             })
 
     return {"groups": groups}
