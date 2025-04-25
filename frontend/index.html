@@ -200,8 +200,28 @@
   </div>
   <div class="name-change-modal" id="name-change-modal">
     <div class="name-change-content">
-      <h3>Change Your Name</h3>
-      <input type="text" class="name-change-input" id="name-change-input" placeholder="Enter new name">
+      <h3>Profile Settings</h3>
+      
+      <div class="profile-settings-tabs">
+        <button class="profile-tab active" id="name-tab">Change Name</button>
+        <button class="profile-tab" id="picture-tab">Change Picture</button>
+      </div>
+      
+      <div class="profile-settings-content">
+        <!-- Name change section -->
+        <div class="name-change-section" id="name-change-section">
+          <input type="text" class="name-change-input" id="name-change-input" placeholder="Enter new name">
+        </div>
+        
+        <!-- Profile picture section -->
+        <div class="profile-picture-section" id="profile-picture-section" style="display: none;">
+          <div class="profile-picture-preview" id="profile-picture-preview">
+            <i class="fas fa-user-circle default-avatar"></i>
+          </div>
+          <input type="file" id="profile-picture-file" accept="image/*">
+        </div>
+      </div>
+      
       <div class="name-change-buttons">
         <button class="name-change-cancel" id="name-change-cancel">Cancel</button>
         <button class="name-change-submit" id="name-change-submit">Save</button>
@@ -227,20 +247,7 @@
     </div>
   </div>
 </div>
-<!-- Profile Picture Modal -->
-<div class="profile-picture-modal" id="profile-picture-modal">
-  <div class="profile-picture-content">
-    <h3>Change Profile Picture</h3>
-    <div id="profile-picture-preview" class="profile-picture-preview">
-      <i class="fas fa-user-circle default-avatar"></i>
-    </div>
-    <input type="file" id="profile-picture-file" accept="image/*">
-    <div class="profile-picture-buttons">
-      <button id="profile-picture-cancel">Cancel</button>
-      <button id="profile-picture-submit">Upload</button>
-    </div>
-  </div>
-</div>
+<!-- Remove the separate profile picture modal since it's now part of the name change modal -->
 <div id="call-modal" class="call-modal" style="display: none;">
   <div class="call-container">
       <div class="video-container">
