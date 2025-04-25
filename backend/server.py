@@ -1098,3 +1098,51 @@ async def delete_group(group_id: str, request: Request):
         return {"message": "Group deleted successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/upload_profile_picture")
+async def upload_profile_picture(
+        file: UploadFile = File(...),
+        authorization: str = Header(None)
+):
+    """Uploads a profile picture for the authenticated user."""
+    try:
+        if not authorization:
+            raise HTTPException(status_code=401, detail="Authorization header missing")
+
+        token = authorization.replace("Bearer ", "")
+        uid = verify_token(token)
+        if not uid:
+            raise HTTPException(status_code=401, detail="Invalid token")
+
+        # Validate file type
+        if file.content_type not in ["image/jpeg", "image/png", "image/gif", "image/webp"]:
+            raise HTTPException(status_code=400, detail="File must be an image (JPEG, PNG, GIF, or WEBP)")
+
+        file_bytes = await file.read()
+
+        # Upload image to Cloudinary with specific folder and transformation
+        upload_result = cloudinary.uploader.upload(
+            file_bytes,
+            folder="profile_pictures",
+            transformation=[
+                {"width": 300, "height": 300, "crop": "fill", "gravity": "face"},
+                {"radius": "max"}  # Makes the image circular
+            ]
+        )
+
+        # Get the URL of the uploaded image
+        profile_picture_url = upload_result["secure_url"]
+
+        # Update user record in Firestore with the profile picture URL
+        user_ref = db.collection("users").document(uid)
+        user_ref.update({"profile_picture_url": profile_picture_url})
+
+        return {
+            "success": True,
+            "message": "Profile picture updated successfully",
+            "profile_picture_url": profile_picture_url
+        }
+
+    except Exception as e:
+        return {"success": False, "error": str(e)}
