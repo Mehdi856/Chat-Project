@@ -53,6 +53,13 @@ let unreadMessages = {};
 let contactsData = [];
 let messagesData = {};
 let pendingContactRequests = [];
+let peerConnection;
+let localStream;
+let remoteStream;
+let callTimer;
+let callStartTime;
+let currentCallType = null; // 'video' or 'voice'
+let isCaller = false;
 
 // Initialize chat when page loads
 document.addEventListener('DOMContentLoaded', initChat);
@@ -467,6 +474,14 @@ function setupWebSocket(user) {
                 showGroupTypingIndicator(data.group_id, data.sender);
             } else if (data.type === "notification") {
                 fetchPendingContactRequests();
+            } else if (data.type === 'webrtc_offer') {
+                handleIncomingCall(data);
+            } else if (data.type === 'webrtc_answer') {
+                handleAnswer(data);
+            } else if (data.type === 'webrtc_ice') {
+                handleICECandidate(data);
+            } else if (data.type === 'webrtc_end') {
+                handleCallEnd();
             }
         } catch (error) {
             console.error("❌ Error parsing WebSocket message:", error);
@@ -730,6 +745,11 @@ function setupEventListeners() {
     });
 
     logoutBtn.addEventListener("click", logoutUser);
+    document.getElementById('voice-call-btn').addEventListener('click', () => initiateCall('voice'));
+    document.getElementById('video-call-btn').addEventListener('click', () => initiateCall('video'));
+    document.getElementById('end-call-btn').addEventListener('click', endCall);
+    document.getElementById('toggle-mic-btn').addEventListener('click', toggleMic);
+    document.getElementById('toggle-camera-btn').addEventListener('click', toggleCamera);
 }
 
 // Add this new function for filtering contacts
@@ -745,6 +765,358 @@ function filterContacts(e) {
             item.style.display = 'none';
         }
     });
+}
+
+const rtcConfiguration = {
+    iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' },
+        { urls: 'stun:stun2.l.google.com:19302' }
+    ]
+};
+
+// Initialize call functionality
+async function initiateCall(callType) {
+    if (!currentChatUID && !currentGroupId) {
+        alert('Please select a chat first');
+        return;
+    }
+    
+    try {
+        currentCallType = callType;
+        isCaller = true;
+        
+        // Show calling UI
+        document.getElementById('call-status').textContent = `Calling ${chatNameElement.textContent}...`;
+        document.getElementById('call-modal').style.display = 'flex';
+        
+        // Get local media
+        localStream = await navigator.mediaDevices.getUserMedia({
+            audio: true,
+            video: callType === 'video'
+        });
+        
+        // Display local video if it's a video call
+        if (callType === 'video') {
+            document.getElementById('local-video').srcObject = localStream;
+            document.getElementById('local-video').style.display = 'block';
+        } else {
+            document.getElementById('local-video').style.display = 'none';
+        }
+        
+        // Create peer connection
+        peerConnection = new RTCPeerConnection(rtcConfiguration);
+        
+        // Add local stream to connection
+        localStream.getTracks().forEach(track => {
+            peerConnection.addTrack(track, localStream);
+        });
+        
+        // Set up remote stream
+        remoteStream = new MediaStream();
+        document.getElementById('remote-video').srcObject = remoteStream;
+        
+        // ICE candidate handler
+        peerConnection.onicecandidate = (event) => {
+            if (event.candidate) {
+                // Send the candidate to the other peer via your signaling (WebSocket)
+                ws.send(JSON.stringify({
+                    type: 'webrtc_ice',
+                    candidate: event.candidate,
+                    target: currentChatUID || currentGroupId,
+                    isGroup: !!currentGroupId
+                }));
+            }
+        };
+        
+        // Track handler for remote stream
+        peerConnection.ontrack = (event) => {
+            event.streams[0].getTracks().forEach(track => {
+                remoteStream.addTrack(track);
+            });
+        };
+        
+        // Create offer
+        const offer = await peerConnection.createOffer();
+        await peerConnection.setLocalDescription(offer);
+        
+        // Send offer via signaling
+        ws.send(JSON.stringify({
+            type: 'webrtc_offer',
+            offer: offer,
+            callType: callType,
+            target: currentChatUID || currentGroupId,
+            isGroup: !!currentGroupId
+        }));
+        
+    } catch (error) {
+        console.error('Error initiating call:', error);
+        alert('Failed to start call. Please check your microphone/camera permissions.');
+        endCall();
+    }
+}
+
+
+// Handle incoming call
+async function handleIncomingCall(data) {
+    if (document.getElementById('call-modal').style.display === 'flex') {
+        // Already in a call, reject new one
+        ws.send(JSON.stringify({
+            type: 'webrtc_end',
+            target: data.sender,
+            isGroup: data.isGroup
+        }));
+        return;
+    }
+    
+    try {
+        currentCallType = data.callType;
+        isCaller = false;
+        
+        // Show incoming call UI
+        document.getElementById('call-status').textContent = `Incoming ${data.callType} call from ${data.senderName}`;
+        document.getElementById('call-modal').style.display = 'flex';
+        
+        // Create accept/reject buttons for incoming call
+        const callControls = document.querySelector('.call-controls');
+        callControls.innerHTML = `
+            <button id="accept-call-btn" class="call-control-btn accept-call">
+                <i class="fas fa-phone"></i>
+            </button>
+            <button id="reject-call-btn" class="call-control-btn end-call">
+                <i class="fas fa-phone-slash"></i>
+            </button>
+        `;
+        
+        document.getElementById('accept-call-btn').addEventListener('click', () => acceptCall(data));
+        document.getElementById('reject-call-btn').addEventListener('click', endCall);
+        
+        // Store the offer for later
+        window.pendingOffer = data;
+        
+    } catch (error) {
+        console.error('Error handling incoming call:', error);
+        endCall();
+    }
+}
+
+// Accept incoming call
+async function acceptCall(data) {
+    try {
+        // Get local media
+        localStream = await navigator.mediaDevices.getUserMedia({
+            audio: true,
+            video: currentCallType === 'video'
+        });
+        
+        // Display local video if it's a video call
+        if (currentCallType === 'video') {
+            document.getElementById('local-video').srcObject = localStream;
+            document.getElementById('local-video').style.display = 'block';
+        } else {
+            document.getElementById('local-video').style.display = 'none';
+        }
+        
+        // Create peer connection
+        peerConnection = new RTCPeerConnection(rtcConfiguration);
+        
+        // Add local stream to connection
+        localStream.getTracks().forEach(track => {
+            peerConnection.addTrack(track, localStream);
+        });
+        
+        // Set up remote stream
+        remoteStream = new MediaStream();
+        document.getElementById('remote-video').srcObject = remoteStream;
+        
+        // ICE candidate handler
+        peerConnection.onicecandidate = (event) => {
+            if (event.candidate) {
+                // Send the candidate to the other peer via your signaling (WebSocket)
+                ws.send(JSON.stringify({
+                    type: 'webrtc_ice',
+                    candidate: event.candidate,
+                    target: data.sender,
+                    isGroup: data.isGroup
+                }));
+            }
+        };
+        
+        // Track handler for remote stream
+        peerConnection.ontrack = (event) => {
+            event.streams[0].getTracks().forEach(track => {
+                remoteStream.addTrack(track);
+            });
+        };
+        
+        // Set remote description
+        await peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer));
+        
+        // Create answer
+        const answer = await peerConnection.createAnswer();
+        await peerConnection.setLocalDescription(answer);
+        
+        // Send answer via signaling
+        ws.send(JSON.stringify({
+            type: 'webrtc_answer',
+            answer: answer,
+            target: data.sender,
+            isGroup: data.isGroup
+        }));
+        
+        // Update UI to show call in progress
+        document.getElementById('call-status').textContent = `In call with ${chatNameElement.textContent}`;
+        startCallTimer();
+        
+        // Restore normal call controls
+        const callControls = document.querySelector('.call-controls');
+        callControls.innerHTML = `
+            <button id="end-call-btn" class="call-control-btn end-call">
+                <i class="fas fa-phone-slash"></i>
+            </button>
+            <button id="toggle-mic-btn" class="call-control-btn toggle-mic">
+                <i class="fas fa-microphone"></i>
+            </button>
+            <button id="toggle-camera-btn" class="call-control-btn toggle-camera">
+                <i class="fas fa-video"></i>
+            </button>
+        `;
+        
+        document.getElementById('end-call-btn').addEventListener('click', endCall);
+        document.getElementById('toggle-mic-btn').addEventListener('click', toggleMic);
+        document.getElementById('toggle-camera-btn').addEventListener('click', toggleCamera);
+        
+    } catch (error) {
+        console.error('Error accepting call:', error);
+        endCall();
+    }
+}
+
+// Handle answer from callee
+async function handleAnswer(data) {
+    if (!peerConnection) return;
+    
+    try {
+        await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
+        document.getElementById('call-status').textContent = `In call with ${chatNameElement.textContent}`;
+        startCallTimer();
+    } catch (error) {
+        console.error('Error handling answer:', error);
+        endCall();
+    }
+}
+
+// Handle ICE candidate
+async function handleICECandidate(data) {
+    if (!peerConnection) return;
+    
+    try {
+        await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+    } catch (error) {
+        console.error('Error adding ICE candidate:', error);
+    }
+}
+
+// Handle call end from remote
+function handleCallEnd() {
+    endCall();
+    alert('The other party has ended the call');
+}
+
+// End call
+function endCall() {
+    // Send end call signal if we're the ones ending it
+    if (peerConnection && (isCaller || document.getElementById('call-modal').style.display === 'flex')) {
+        ws.send(JSON.stringify({
+            type: 'webrtc_end',
+            target: currentChatUID || currentGroupId,
+            isGroup: !!currentGroupId
+        }));
+    }
+    
+    // Stop all media tracks
+    if (localStream) {
+        localStream.getTracks().forEach(track => track.stop());
+    }
+    
+    if (remoteStream) {
+        remoteStream.getTracks().forEach(track => track.stop());
+    }
+    
+    // Close peer connection
+    if (peerConnection) {
+        peerConnection.close();
+    }
+    
+    // Reset variables
+    peerConnection = null;
+    localStream = null;
+    remoteStream = null;
+    currentCallType = null;
+    isCaller = false;
+    
+    // Stop call timer
+    if (callTimer) {
+        clearInterval(callTimer);
+        callTimer = null;
+    }
+    
+    // Hide call modal
+    document.getElementById('call-modal').style.display = 'none';
+    document.getElementById('remote-video').srcObject = null;
+    document.getElementById('local-video').srcObject = null;
+}
+
+// Toggle microphone
+function toggleMic() {
+    if (!localStream) return;
+    
+    const micBtn = document.getElementById('toggle-mic-btn');
+    const audioTracks = localStream.getAudioTracks();
+    
+    if (audioTracks.length > 0) {
+        const enabled = audioTracks[0].enabled;
+        audioTracks[0].enabled = !enabled;
+        
+        if (enabled) {
+            micBtn.classList.add('muted');
+        } else {
+            micBtn.classList.remove('muted');
+        }
+    }
+}
+
+// Toggle camera
+function toggleCamera() {
+    if (!localStream || currentCallType !== 'video') return;
+    
+    const cameraBtn = document.getElementById('toggle-camera-btn');
+    const videoTracks = localStream.getVideoTracks();
+    
+    if (videoTracks.length > 0) {
+        const enabled = videoTracks[0].enabled;
+        videoTracks[0].enabled = !enabled;
+        
+        if (enabled) {
+            cameraBtn.classList.add('off');
+        } else {
+            cameraBtn.classList.remove('off');
+        }
+    }
+}
+
+// Start call timer
+function startCallTimer() {
+    callStartTime = new Date();
+    document.getElementById('call-timer').textContent = '00:00';
+    
+    callTimer = setInterval(() => {
+        const now = new Date();
+        const elapsed = new Date(now - callStartTime);
+        const minutes = elapsed.getMinutes().toString().padStart(2, '0');
+        const seconds = elapsed.getSeconds().toString().padStart(2, '0');
+        document.getElementById('call-timer').textContent = `${minutes}:${seconds}`;
+    }, 1000);
 }
 
 async function sendMessage() {

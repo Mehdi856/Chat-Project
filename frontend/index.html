@@ -173,6 +173,14 @@
                 </div>
               </div>
             </div>
+            <div class="call-buttons">
+              <button id="voice-call-btn" title="Voice Call">
+                  <i class="fas fa-phone"></i>
+              </button>
+              <button id="video-call-btn" title="Video Call">
+                  <i class="fas fa-video"></i>
+              </button>
+            </div>
             <div class="chat-actions">
               <!-- Chat action buttons can be added here -->
             </div>
@@ -217,6 +225,29 @@
       <button id="member-modal-cancel">Cancel</button>
       <button id="member-modal-confirm">Confirm</button>
     </div>
+  </div>
+</div>
+<div id="call-modal" class="call-modal" style="display: none;">
+  <div class="call-container">
+      <div class="video-container">
+          <video id="remote-video" autoplay playsinline></video>
+          <video id="local-video" autoplay playsinline muted></video>
+      </div>
+      <div class="call-controls">
+          <button id="end-call-btn" class="call-control-btn end-call">
+              <i class="fas fa-phone-slash"></i>
+          </button>
+          <button id="toggle-mic-btn" class="call-control-btn toggle-mic">
+              <i class="fas fa-microphone"></i>
+          </button>
+          <button id="toggle-camera-btn" class="call-control-btn toggle-camera">
+              <i class="fas fa-video"></i>
+          </button>
+      </div>
+      <div class="call-info">
+          <h3 id="call-status">Calling...</h3>
+          <p id="call-timer">00:00</p>
+      </div>
   </div>
 </div>
   <!-- Import scripts -->
