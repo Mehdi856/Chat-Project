@@ -86,12 +86,13 @@ async def register_user(user_data: dict, request: Request):
         # Create the user in Firebase Auth
         user = auth.create_user(email=email, password=password, display_name=name)
 
-        # Store user info in Firestore with empty username
+        # Store user info in Firestore with empty username and no profile picture initially
         db.collection("users").document(user.uid).set({
             "name": name,
             "email": email,
             "uid": user.uid,
             "username": "",  # Empty initially
+            "profile_picture_url": None,  # Add this field
             "contacts": [],
             "groups": []
         })
@@ -100,7 +101,8 @@ async def register_user(user_data: dict, request: Request):
             "message": "User registered successfully!", 
             "uid": user.uid,
             "name": name,
-            "username": ""  # Return empty username
+            "username": "",  # Return empty username
+            "profile_picture_url": None  # Return empty profile picture
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -126,6 +128,7 @@ async def login_user(user_data: dict):
         user_data = user_doc.to_dict()
         name = user_data.get("name", "User")
         username = user_data.get("username", "")  # Get username (empty if not set)
+        profile_picture_url = user_data.get("profile_picture_url", None)  # Get profile picture
 
         # Generate a custom token
         custom_token = auth.create_custom_token(user.uid)
@@ -135,7 +138,8 @@ async def login_user(user_data: dict):
             "uid": user.uid,
             "token": custom_token.decode("utf-8"),
             "name": name,
-            "username": username  # Include username in response
+            "username": username,  # Include username in response
+            "profile_picture_url": profile_picture_url  # Include profile picture
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail="Invalid email or password.")
@@ -276,6 +280,15 @@ async def websocket_endpoint(websocket: WebSocket):
                     sender_uid=sender_uid,
                     members=group_data.get("members", [])
                 )
+            elif message_type == "request_profile_picture":
+                # Client is requesting a profile picture update
+                user_ref = db.collection("users").document(sender_uid).get()
+                if user_ref.exists:
+                    user_data = user_ref.to_dict()
+                    await websocket.send_json({
+                        "type": "profile_picture_update",
+                        "profile_picture_url": user_data.get("profile_picture_url")
+                    })
 
     except WebSocketDisconnect:
         print(f"🔴 User {sender_uid} disconnected")
@@ -291,7 +304,7 @@ async def websocket_endpoint(websocket: WebSocket):
 # ✅ Get Contacts
 @app.get("/contacts/{uid}")
 async def get_contacts(uid: str, request: Request):
-    """Retrieves the contact list of a user, including names and UIDs."""
+    """Retrieves the contact list of a user, including names, UIDs, and profile pictures."""
     # Verify the token from Authorization header
     token = request.headers.get("Authorization", "").replace("Bearer ", "")
     if not token or not verify_token(token):
@@ -305,7 +318,7 @@ async def get_contacts(uid: str, request: Request):
     user_data = user_ref.to_dict()
     contact_uids = user_data.get("contacts", [])
 
-    # ✅ Fetch full user details for each contact
+    # Fetch full user details for each contact
     contacts = []
     for contact_uid in contact_uids:
         contact_ref = db.collection("users").document(contact_uid).get()
@@ -313,7 +326,9 @@ async def get_contacts(uid: str, request: Request):
             contact_data = contact_ref.to_dict()
             contacts.append({
                 "uid": contact_uid,
-                "username": contact_data.get("name", "Unknown")
+                "name": contact_data.get("name", "Unknown"),
+                "username": contact_data.get("username", ""),
+                "profile_picture_url": contact_data.get("profile_picture_url", None)  # Add profile picture
             })
 
     return {"contacts": contacts}
@@ -479,7 +494,7 @@ async def get_messages(user_id: str, contact_id: str, request: Request, limit: O
 # ✅ Get Contact Requests
 @app.get("/contact_requests/{uid}")
 async def get_contact_requests(uid: str, request: Request):
-    """Retrieves pending contact requests for a user."""
+    """Retrieves pending contact requests for a user with sender profile pictures."""
     # Verify the token from Authorization header
     token = request.headers.get("Authorization", "").replace("Bearer ", "")
     if not token or not verify_token(token):
@@ -491,10 +506,14 @@ async def get_contact_requests(uid: str, request: Request):
     pending_requests = []
     for req in requests_query.stream():
         data = req.to_dict()
+        # Get sender's profile picture
+        sender_ref = db.collection("users").document(data["sender"]).get()
+        if sender_ref.exists:
+            sender_data = sender_ref.to_dict()
+            data["sender_profile_picture_url"] = sender_data.get("profile_picture_url", None)
         pending_requests.append(data)
     
     return {"requests": pending_requests}
-
 
 # ✅ Respond to Contact Request
 @app.post("/contact_requests/{request_id}/respond")
@@ -822,13 +841,13 @@ async def search_users(q: str, request: Request):
             results.append({
                 "uid": user_data.get("uid"),
                 "name": user_data.get("name"),
-                "username": user_data.get("username", "")
+                "username": user_data.get("username", ""),
+                "profile_picture_url": user_data.get("profile_picture_url", None)  # Add profile picture
             })
         
         return {"users": results}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
 
 
 #upload
@@ -911,7 +930,7 @@ async def get_group_details(group_id: str, request: Request):
     if uid not in group_data.get("members", []):
         raise HTTPException(status_code=403, detail="Not a group member")
     
-    # Get member details
+    # Get member details with profile pictures
     members_info = []
     for member_uid in group_data["members"]:
         user_doc = db.collection("users").document(member_uid).get()
@@ -920,7 +939,8 @@ async def get_group_details(group_id: str, request: Request):
             members_info.append({
                 "uid": member_uid,
                 "name": user_data.get("name"),
-                "username": user_data.get("username", "")
+                "username": user_data.get("username", ""),
+                "profile_picture_url": user_data.get("profile_picture_url", None)  # Add profile picture
             })
     
     return {
@@ -929,7 +949,7 @@ async def get_group_details(group_id: str, request: Request):
         "creator": group_data["creator"],
         "members": members_info,
         "created_at": group_data["created_at"],
-        "is_private": group_data.get("is_private", False)  # Include privacy status
+        "is_private": group_data.get("is_private", False)
     }
 @app.post("/groups/{group_id}/members")
 async def add_group_members(group_id: str, member_data: dict, request: Request):
@@ -1042,7 +1062,7 @@ async def remove_group_member(group_id: str, member_uid: str, request: Request):
     return {"message": "Member removed successfully"}
 @app.get("/user_details/{uid}")
 async def get_user_details(uid: str, request: Request):
-    """Returns basic user details by UID."""
+    """Returns basic user details by UID including profile picture."""
     token = request.headers.get("Authorization", "").replace("Bearer ", "")
     if not token or not verify_token(token):
         raise HTTPException(status_code=401, detail="Unauthorized")
@@ -1055,7 +1075,8 @@ async def get_user_details(uid: str, request: Request):
     return {
         "uid": uid,
         "name": user_data.get("name"),
-        "username": user_data.get("username", "")
+        "username": user_data.get("username", ""),
+        "profile_picture_url": user_data.get("profile_picture_url", None)  # Add profile picture
     }
 @app.delete("/groups/{group_id}")
 async def delete_group(group_id: str, request: Request):
@@ -1143,6 +1164,9 @@ async def upload_profile_picture(
         user_ref = db.collection("users").document(uid)
         user_ref.update({"profile_picture_url": profile_picture_url})
 
+        # Notify all connected devices of this user
+        await websocket_manager.send_profile_picture_update(uid, profile_picture_url)
+
         return {
             "success": True,
             "message": "Profile picture updated successfully",
@@ -1183,3 +1207,23 @@ async def get_profile_picture(authorization: str = Header(None)):
 
     except Exception as e:
         return {"success": False, "error": str(e)}
+@app.post("/batch_user_details")
+async def batch_user_details(uids: List[str], request: Request):
+    """Returns basic user details for multiple UIDs at once."""
+    token = request.headers.get("Authorization", "").replace("Bearer ", "")
+    if not token or not verify_token(token):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    users = []
+    for uid in uids:
+        user_ref = db.collection("users").document(uid).get()
+        if user_ref.exists:
+            user_data = user_ref.to_dict()
+            users.append({
+                "uid": uid,
+                "name": user_data.get("name"),
+                "username": user_data.get("username", ""),
+                "profile_picture_url": user_data.get("profile_picture_url", None)
+            })
+    
+    return {"users": users}
