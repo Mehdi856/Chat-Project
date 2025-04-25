@@ -109,13 +109,19 @@
           <button id="add-contact-btn">Add</button>
         </div>
         <!-- Group creation form (hidden initially) -->
-        <div id="New-group" style="display: none; ">
-          <div class="back-button" id="back-button-group">🡰</div>
-          <h1>Create Group</h1>
-          <div id="group-name-container">
-            <input type="text" id="group-name-input" placeholder="Enter group name .... " />
+        <div id="New-group" style="display: none;">
+          <div class="back-button-group" id="back-button-group">🡰</div>
+          
+          <div class="group-creation-content">
+            <h2 class="page-title">Create Group</h2>
+            <p class="page-subtitle">Choose a name for your group and invite members later</p>
+            
+            <div class="input-container">
+              <input type="text" id="group-name-input" placeholder="Enter group name..." />
+            </div>
+            
+            <button id="create-group-btn" class="primary-button">Create</button>
           </div>
-          <button id="create-group-btn">Create</button>
         </div>
         <!-- Active chat interface (hidden initially) -->
         <div id="active-chat" style="display: none;">
