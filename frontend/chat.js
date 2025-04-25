@@ -74,8 +74,24 @@ async function initChat() {
     }
 
     // Simple token validation (just check if it exists)
-    // Remove the verify_token endpoint check since it doesn't exist
     try {
+        // Try to validate the token by making a simple API call
+        // Use a more reliable endpoint that we know exists (user profile or contacts)
+        const testResponse = await fetch(`${BACKEND_URL}/contacts/${user.uid}`, {
+            method: "GET",
+            headers: { Authorization: `Bearer ${user.token}` }
+        });
+        
+        // If token is invalid, try to refresh it
+        if (!testResponse.ok) {
+            console.log("Token validation failed, attempting to refresh...");
+            const refreshed = await refreshToken(user);
+            if (!refreshed) {
+                throw new Error("Failed to refresh token");
+            }
+        }
+        
+        // Now proceed with initialization
         updateUserHeader(user);
         displayUserUid(user);
         await loadContacts();
@@ -87,9 +103,49 @@ async function initChat() {
         await initProfilePicture();
     } catch (error) {
         console.error("Initialization error:", error);
-        // If initialization fails, log out and redirect
-        logoutUser();
-        window.location.href = "login.html";
+        // Check if this is an authentication error
+        if (error.message && (error.message.includes("authenticated") || error.message.includes("token"))) {
+            alert("Your session has expired. Please log in again.");
+            logoutUser();
+            window.location.href = "login.html";
+        }
+    }
+}
+
+// Add a function to refresh the token
+async function refreshToken(user) {
+    try {
+        if (!user || !user.customToken) {
+            return false;
+        }
+        
+        // Import Firebase auth from firebase.js to avoid circular dependencies
+        // This function uses the Firebase auth we've already initialized
+        const { getAuth } = await import("https://www.gstatic.com/firebasejs/10.7.2/firebase-auth.js");
+        const { app } = await import("./firebase.js");
+        const auth = getAuth(app);
+        
+        // Re-authenticate with Firebase using the stored custom token
+        await auth.signInWithCustomToken(user.customToken);
+        
+        // Get a fresh ID token
+        const currentUser = auth.currentUser;
+        if (!currentUser) {
+            return false;
+        }
+        
+        const freshToken = await currentUser.getIdToken(true); // Force refresh
+        
+        // Update the user object in localStorage
+        user.idToken = freshToken;
+        user.token = freshToken; // Also update the token property
+        localStorage.setItem("user", JSON.stringify(user));
+        
+        console.log("Token refreshed successfully");
+        return true;
+    } catch (error) {
+        console.error("Failed to refresh token:", error);
+        return false;
     }
 }
 
@@ -653,14 +709,74 @@ function setupEventListeners() {
 
     // Settings button now opens the name change modal directly
     document.getElementById("settings-button").addEventListener("click", () => {
+      // Get current user data for pre-filling
+      const user = getCurrentUser();
+      if (user && user.name) {
+        document.getElementById("name-change-input").value = user.name;
+      }
+      
+      // Reset to show name tab by default
+      document.getElementById("name-tab").classList.add("active");
+      document.getElementById("picture-tab").classList.remove("active");
+      document.getElementById("name-change-section").style.display = "block";
+      document.getElementById("profile-picture-section").style.display = "none";
+      
+      // Show the modal
       document.getElementById("name-change-modal").style.display = "flex";
+    });
+    
+    // Tab switching in profile settings modal
+    document.getElementById("name-tab").addEventListener("click", () => {
+      document.getElementById("name-tab").classList.add("active");
+      document.getElementById("picture-tab").classList.remove("active");
+      document.getElementById("name-change-section").style.display = "block";
+      document.getElementById("profile-picture-section").style.display = "none";
+    });
+    
+    document.getElementById("picture-tab").addEventListener("click", () => {
+      document.getElementById("picture-tab").classList.add("active");
+      document.getElementById("name-tab").classList.remove("active");
+      document.getElementById("profile-picture-section").style.display = "block";
+      document.getElementById("name-change-section").style.display = "none";
+      
+      // Update profile picture preview with current user image
+      const user = getCurrentUser();
+      if (user && user.profile_picture_url) {
+        document.getElementById("profile-picture-preview").innerHTML = `
+          <img src="${user.profile_picture_url}" alt="Profile" class="profile-picture-preview-img">
+        `;
+      } else {
+        document.getElementById("profile-picture-preview").innerHTML = `
+          <i class="fas fa-user-circle default-avatar"></i>
+        `;
+      }
     });
     
     document.getElementById("name-change-cancel").addEventListener("click", () => {
       document.getElementById("name-change-modal").style.display = "none";
     });
     
-    document.getElementById("name-change-submit").addEventListener("click", changeUserName);
+    // Handle modal submission for both name and picture changes
+    document.getElementById("name-change-submit").addEventListener("click", async () => {
+      // Check which tab is active
+      if (document.getElementById("name-tab").classList.contains("active")) {
+        // Handle name change submission
+        await changeUserName();
+      } else {
+        // Handle profile picture change submission
+        const fileInput = document.getElementById("profile-picture-file");
+        if (fileInput.files.length > 0) {
+          const success = await uploadProfilePicture(fileInput.files[0]);
+          if (success) {
+            fileInput.value = ""; // Clear the file input
+            document.getElementById("name-change-modal").style.display = "none";
+          }
+        } else {
+          alert("Please select an image file first");
+        }
+      }
+    });
+    
     sendBtn.addEventListener("click", sendMessage);
     messageInput.addEventListener("keypress", (e) => {
         if (e.key === "Enter") sendMessage();
@@ -703,16 +819,9 @@ function setupEventListeners() {
         currentChatUID = null;
         currentGroupId = null;
     });
-    // Add profile picture button to dropdown menu
-    const dropdownMenu = document.querySelector('.menu-dropdown');
-    const profilePictureButton = document.createElement('button');
-    profilePictureButton.id = "change-profile-picture-btn";
-    profilePictureButton.innerHTML = '<i class="fas fa-camera"></i> Change Profile Picture';
-    dropdownMenu.insertBefore(profilePictureButton, dropdownMenu.firstChild);
     
-    profilePictureButton.addEventListener("click", () => {
-        document.getElementById("profile-picture-modal").style.display = "flex";
-    });
+    // Remove the profile picture button from dropdown menu since it's now in the settings modal
+    
     backButtonChat.addEventListener("click", () => {
         activeChat.style.display = "none";
         noChatSelected.style.display = "flex";
@@ -730,6 +839,7 @@ function setupEventListeners() {
     document.addEventListener('click', function() {
         dropdown.style.display = 'none';
     });
+    
     // Profile picture file input change
     document.getElementById("profile-picture-file").addEventListener("change", (e) => {
         const file = e.target.files[0];
@@ -744,59 +854,6 @@ function setupEventListeners() {
         }
     });
 
-    // Profile picture cancel button
-    document.getElementById("profile-picture-cancel").addEventListener("click", () => {
-        document.getElementById("profile-picture-modal").style.display = "none";
-        document.getElementById("profile-picture-file").value = "";
-    });
-
-    // Profile picture submit button
-    document.getElementById("profile-picture-submit").addEventListener("click", async () => {
-        const fileInput = document.getElementById("profile-picture-file");
-        if (fileInput.files.length > 0) {
-            const success = await uploadProfilePicture(fileInput.files[0]);
-            if (success) {
-                document.getElementById("profile-picture-modal").style.display = "none";
-                fileInput.value = "";
-            }
-        } else {
-            alert("Please select an image file first");
-        }
-    });
-    // Profile picture upload
-    document.getElementById("change-profile-picture-btn").addEventListener("click", () => {
-        document.getElementById("profile-picture-modal").style.display = "flex";
-    });
-    
-    document.getElementById("profile-picture-cancel").addEventListener("click", () => {
-        document.getElementById("profile-picture-modal").style.display = "none";
-    });
-    
-    document.getElementById("profile-picture-submit").addEventListener("click", async () => {
-        const fileInput = document.getElementById("profile-picture-file");
-        if (fileInput.files.length > 0) {
-            const success = await uploadProfilePicture(fileInput.files[0]);
-            if (success) {
-                fileInput.value = ""; // Clear the file input
-            }
-        } else {
-            alert("Please select a file first");
-        }
-    });
-    
-    // Preview profile picture before upload
-    document.getElementById("profile-picture-file").addEventListener("change", (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                document.getElementById("profile-picture-preview").innerHTML = `
-                    <img src="${event.target.result}" alt="Preview">
-                `;
-            };
-            reader.readAsDataURL(file);
-        }
-    });
     // Tab switching functionality
     dmsTab.addEventListener("click", () => {
         dmsTab.classList.add("active");
@@ -1350,56 +1407,104 @@ async function deleteCurrentContact() {
 }
 
 async function changeUserName() {
-    const newName = document.getElementById("name-change-input").value.trim();
-    if (!newName) {
-      alert("Please enter a valid name");
-      return;
-    }
-  
     try {
-      const user = getCurrentUser();
-      if (!user?.token) throw new Error("User not authenticated");
-  
-      // Update in Firestore
-      const response = await fetch(`${BACKEND_URL}/update_name`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${user.token}`
-        },
-        body: JSON.stringify({ name: newName })
-      });
-  
-      if (!response.ok) {
-        throw new Error(`Server error: ${response.statusText}`);
-      }
-  
-      // Get current user data from localStorage
-      const storedUser = JSON.parse(localStorage.getItem("user"));
-      if (!storedUser) {
-        throw new Error("User data not found in localStorage");
-      }
-  
-      // Update local user data
-      storedUser.name = newName;
-      
-      // Update in localStorage
-      localStorage.setItem("user", JSON.stringify(storedUser));
-  
-      // Close modal and update UI
-      document.getElementById("name-change-modal").style.display = "none";
-      document.getElementById("name-change-input").value = "";
-      
-      // Refresh user display with updated data
-      updateUserHeader(storedUser);
-      await loadContacts(); // Refresh contacts list if needed
-      
-      alert("Name updated successfully!");
+        let user = getCurrentUser();
+        if (!user?.token) {
+            // Try to refresh the token first
+            const refreshed = await refreshToken(user);
+            if (!refreshed) {
+                throw new Error("User not authenticated - token refresh failed");
+            }
+            // Get updated user data
+            user = getCurrentUser();
+        }
+        
+        const nameInput = document.getElementById("name-change-input");
+        const newName = nameInput.value.trim();
+        
+        if (!newName) {
+            alert("Please enter a name");
+            return;
+        }
+        
+        // UI feedback - disable button, show loading
+        const submitBtn = document.getElementById("name-change-submit");
+        const originalBtnText = submitBtn.textContent;
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Saving...";
+        
+        let response = await fetch(`${BACKEND_URL}/update_name`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${user.token}`
+            },
+            body: JSON.stringify({ name: newName })
+        });
+        
+        if (!response.ok) {
+            if (response.status === 401) {
+                // Token issue - try to refresh and retry
+                const refreshed = await refreshToken(user);
+                if (refreshed) {
+                    // Get updated user with new token
+                    const updatedUser = getCurrentUser();
+                    // Retry the request
+                    const retryResponse = await fetch(`${BACKEND_URL}/update_name`, {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "Authorization": `Bearer ${updatedUser.token}`
+                        },
+                        body: JSON.stringify({ name: newName })
+                    });
+                    
+                    if (!retryResponse.ok) {
+                        throw new Error(`Name update failed after token refresh: ${retryResponse.status}`);
+                    }
+                    
+                    // Use the retry response
+                    response = retryResponse;
+                } else {
+                    throw new Error("Authentication failed - please log in again");
+                }
+            } else {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || "Failed to update name");
+            }
+        }
+        
+        // Update local storage
+        user.name = newName;
+        localStorage.setItem("user", JSON.stringify(user));
+        
+        // Update UI
+        userInfoElement.textContent = newName;
+        
+        // Close modal
+        document.getElementById("name-change-modal").style.display = "none";
+        
+        // Optional: show success message
+        alert("Name updated successfully!");
     } catch (error) {
-      console.error("❌ Failed to update name:", error);
-      alert("Failed to update name. Please try again.");
+        console.error("Failed to change name:", error);
+        if (error.message.includes("authenticated") || error.message.includes("token")) {
+            // This is an auth error - suggest logging in again
+            alert("Your session has expired. Please log in again.");
+            setTimeout(() => {
+                logoutUser();
+                window.location.href = "login.html";
+            }, 1500);
+        } else {
+            alert(`Error changing name: ${error.message}`);
+        }
+    } finally {
+        // Reset button state
+        const submitBtn = document.getElementById("name-change-submit");
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Save";
     }
-  }
+}
 
 // Setup search input event listener
 function setupSearchListeners() {
@@ -1943,6 +2048,12 @@ function showMemberModal(action) {
                 <input type="text" id="member-search-input" placeholder="Search users...">
                 <div id="member-search-results" class="search-results"></div>
             `;
+            
+            // Re-attach the event listener since we recreated the input element
+            const memberSearchInput = document.getElementById("member-search-input");
+            if (memberSearchInput) {
+                memberSearchInput.addEventListener("input", debounce(searchUsersForMember, 300));
+            }
         }
     } else if (action === 'kick') {
         title.textContent = "Kick Member";
@@ -1992,11 +2103,13 @@ async function searchUsersForMember(e) {
 
         const results = await response.json();
         
-        if (results.users && results.users.length > 0) {
-            displayMemberSearchResults(results.users);
-        }
+        // Always display results, even if empty
+        displayMemberSearchResults(results.users || []);
     } catch (error) {
         console.error("Failed to search users:", error);
+        // Show error in results container
+        resultsContainer.innerHTML = `<div class="no-results">Error searching users</div>`;
+        resultsContainer.style.display = "block";
     }
 }
 
@@ -2012,7 +2125,9 @@ function displayMemberSearchResults(users) {
     });
 
     if (filteredUsers.length === 0) {
-        resultsContainer.style.display = "none";
+        // Show "No results found" message
+        resultsContainer.innerHTML = `<div class="no-results">No users found</div>`;
+        resultsContainer.style.display = "block";
         return;
     }
 
@@ -2065,6 +2180,12 @@ async function confirmMemberAction() {
         if (!user?.token) throw new Error("User not authenticated");
         
         if (currentModalAction === 'add') {
+            // Show loading state
+            const confirmButton = document.getElementById("member-modal-confirm");
+            const originalText = confirmButton.textContent;
+            confirmButton.textContent = "Adding...";
+            confirmButton.disabled = true;
+            
             // Call backend to add member by UID
             const response = await fetch(`${BACKEND_URL}/groups/${currentGroupId}/members`, {
                 method: "POST",
@@ -2075,10 +2196,22 @@ async function confirmMemberAction() {
                 body: JSON.stringify({ members: [selectedMember.uid] })
             });
             
+            // Reset button state
+            confirmButton.textContent = originalText;
+            confirmButton.disabled = false;
+            
             if (!response.ok) throw new Error(`Failed to add member: ${response.statusText}`);
             
             alert(`${selectedMember.name} added to group successfully!`);
+            // Close the modal
+            closeMemberModal();
         } else if (currentModalAction === 'kick') {
+            // Show loading state
+            const confirmButton = document.getElementById("member-modal-confirm");
+            const originalText = confirmButton.textContent;
+            confirmButton.textContent = "Removing...";
+            confirmButton.disabled = true;
+            
             // Call backend to kick member by UID
             const response = await fetch(`${BACKEND_URL}/groups/${currentGroupId}/members/${selectedMember.uid}`, {
                 method: "DELETE",
@@ -2088,31 +2221,22 @@ async function confirmMemberAction() {
                 }
             });
             
+            // Reset button state
+            confirmButton.textContent = originalText;
+            confirmButton.disabled = false;
+            
             if (!response.ok) throw new Error(`Failed to kick member: ${response.statusText}`);
             
             alert(`${selectedMember.name} removed from group successfully!`);
+            // Close the modal
+            closeMemberModal();
         }
         
         // Refresh group data
         await loadGroups();
-        
-        if (currentGroupId) {
-            const updatedGroup = groupsData.find(g => g.id === currentGroupId);
-            if (updatedGroup) {
-                openGroupChat(updatedGroup);
-            } else {
-                // Group no longer exists or we were removed
-                activeChat.style.display = "none";
-                noChatSelected.style.display = "flex";
-                currentGroupId = null;
-            }
-        }
-
-        
-        closeMemberModal();
     } catch (error) {
         console.error(`Error in member action:`, error);
-        alert(`Failed to ${currentModalAction} member: ${error.message}`);
+        alert(`Error: ${error.message}`);
     }
 }
 
@@ -2215,23 +2339,42 @@ async function getGroupMembersDetails(memberUids) {
 async function displayCurrentMembersForKick() {
     if (!currentGroupData) return;
     
+    const modal = document.getElementById("member-modal");
+    const searchContainer = modal.querySelector(".search-container");
     const membersContainer = document.getElementById("display-members-container");
-    membersContainer.innerHTML = "<div class='loading-message'>Loading members...</div>";
+    const confirmButton = document.getElementById("member-modal-confirm");
+    
+    // Show loading indicator
+    searchContainer.style.display = "none";
+    membersContainer.style.display = "block";
+    membersContainer.innerHTML = `<div class="loading-members">Loading members...</div>`;
+    confirmButton.style.display = "none";
     
     try {
         // Get detailed member info
         const members = await getGroupMembersDetails(currentGroupData.members);
         
-        // Filter out the current user (you can't kick yourself)
+        // Filter out current user if not creator
         const currentUser = getCurrentUser();
-        const filteredMembers = members.filter(member => member.uid !== currentUser.uid);
-        
-        if (filteredMembers.length === 0) {
-            membersContainer.innerHTML = "<div class='empty-message'>No members available to kick</div>";
-            return;
-        }
+        const filteredMembers = members.filter(member => {
+            // If current user is not creator, filter out creator
+            if (currentUser.uid !== currentGroupData.creator && member.uid === currentGroupData.creator) {
+                return false;
+            }
+            // Filter out current user if not viewing own profile
+            if (member.uid === currentUser.uid) {
+                return false;
+            }
+            return true;
+        });
         
         membersContainer.innerHTML = "";
+        
+        if (filteredMembers.length === 0) {
+            membersContainer.innerHTML = `<div class="no-members-message">No members available to remove</div>`;
+            confirmButton.style.display = "none";
+            return;
+        }
         
         filteredMembers.forEach(member => {
             const memberItem = document.createElement("div");
@@ -2269,13 +2412,14 @@ async function displayCurrentMembersForKick() {
                     `${member.name || member.username} (@${member.username})`;
                 document.getElementById("selected-member-uid").value = member.uid;
                 document.getElementById("selected-member-display").style.display = "block";
+                confirmButton.style.display = "block";
             });
             
             membersContainer.appendChild(memberItem);
         });
     } catch (error) {
-        console.error("Failed to load members for kicking:", error);
-        membersContainer.innerHTML = "<div class='error-message'>Failed to load members</div>";
+        console.error("Error loading members:", error);
+        membersContainer.innerHTML = `<div class="error-message">Error loading members</div>`;
     }
 }
 async function deleteGroup() {
@@ -2370,18 +2514,29 @@ function updateProfilePictureUI(user) {
 
 async function uploadProfilePicture(file) {
     try {
-        const user = getCurrentUser();
-        if (!user?.token) throw new Error("User not authenticated");
+        let user = getCurrentUser();
+        if (!user?.token) {
+            // Try to refresh the token first
+            const refreshed = await refreshToken(user);
+            if (!refreshed) {
+                throw new Error("User not authenticated - token refresh failed");
+            }
+            // Get updated user data
+            user = getCurrentUser();
+        }
 
         // Show loading state
-        const submitBtn = document.getElementById("profile-picture-submit");
+        const submitBtn = document.getElementById("name-change-submit");
         submitBtn.disabled = true;
         submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
 
         const formData = new FormData();
         formData.append("file", file);
 
-        const response = await fetch(`${BACKEND_URL}/upload_profile_picture`, {
+        // Log the token being used (with first few chars for debugging)
+        console.log(`Using token: ${user.token.substring(0, 15)}...`);
+
+        let response = await fetch(`${BACKEND_URL}/upload_profile_picture`, {
             method: "POST",
             headers: {
                 Authorization: `Bearer ${user.token}`
@@ -2390,14 +2545,40 @@ async function uploadProfilePicture(file) {
         });
 
         if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.detail || "Failed to upload profile picture");
+            if (response.status === 401) {
+                // Token issue - try to refresh and retry
+                const refreshed = await refreshToken(user);
+                if (refreshed) {
+                    // Get updated user with new token
+                    const updatedUser = getCurrentUser();
+                    // Retry the upload
+                    const retryResponse = await fetch(`${BACKEND_URL}/upload_profile_picture`, {
+                        method: "POST",
+                        headers: {
+                            Authorization: `Bearer ${updatedUser.token}`
+                        },
+                        body: formData
+                    });
+                    
+                    if (!retryResponse.ok) {
+                        throw new Error(`Upload failed after token refresh: ${retryResponse.status}`);
+                    }
+                    
+                    // Use the retry response
+                    response = retryResponse;
+                } else {
+                    throw new Error("Authentication failed - please log in again");
+                }
+            } else {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || "Failed to upload profile picture");
+            }
         }
 
-        const newdata = await response.json();
+        const data = await response.json();
         
         // Update local user data
-        user.profile_picture_url = newdata.profile_picture_url;
+        user.profile_picture_url = data.profile_picture_url;
         localStorage.setItem("user", JSON.stringify(user));
         
         // Update UI immediately
@@ -2413,19 +2594,28 @@ async function uploadProfilePicture(file) {
         }
         
         // Close modal
-        document.getElementById("profile-picture-modal").style.display = "none";
+        document.getElementById("name-change-modal").style.display = "none";
         
         alert("Profile picture updated successfully!");
         return true;
     } catch (error) {
         console.error("Upload error:", error);
-        alert(`Upload failed: ${error.message}`);
+        if (error.message.includes("authenticated") || error.message.includes("token")) {
+            // This is an auth error - suggest logging in again
+            alert("Your session has expired. Please log in again.");
+            setTimeout(() => {
+                logoutUser();
+                window.location.href = "login.html";
+            }, 1500);
+        } else {
+            alert(`Upload failed: ${error.message}`);
+        }
         return false;
     } finally {
-        const submitBtn = document.getElementById("profile-picture-submit");
+        const submitBtn = document.getElementById("name-change-submit");
         if (submitBtn) {
             submitBtn.disabled = false;
-            submitBtn.innerHTML = 'Upload';
+            submitBtn.innerHTML = 'Save';
         }
     }
 }
