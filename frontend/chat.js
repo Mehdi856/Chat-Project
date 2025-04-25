@@ -2363,6 +2363,11 @@ async function uploadProfilePicture(file) {
         const user = getCurrentUser();
         if (!user?.token) throw new Error("User not authenticated");
 
+        // Show loading state
+        const submitBtn = document.getElementById("profile-picture-submit");
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
+
         const formData = new FormData();
         formData.append("file", file);
 
@@ -2374,31 +2379,31 @@ async function uploadProfilePicture(file) {
             body: formData
         });
 
-        if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.detail || "Failed to upload profile picture");
+        }
 
         const data = await response.json();
-        if (data.success) {
-            // Update local user data
-            user.profile_picture_url = data.profile_picture_url;
-            localStorage.setItem("user", JSON.stringify(user));
-            
-            // Update UI
-            updateProfilePictureUI(user);
-            
-            // Notify all connected devices
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({
-                    type: "request_profile_picture"
-                }));
-            }
-            
-            return true;
-        } else {
-            throw new Error(data.error || "Failed to upload profile picture");
-        }
+        
+        // Update local user data
+        user.profile_picture_url = data.profile_picture_url;
+        localStorage.setItem("user", JSON.stringify(user));
+        
+        // Update UI
+        updateProfilePictureUI(user);
+        
+        // Close modal
+        document.getElementById("profile-picture-modal").style.display = "none";
+        
+        return true;
     } catch (error) {
-        console.error("Failed to upload profile picture:", error);
-        alert(`Failed to upload: ${error.message}`);
+        console.error("Upload error:", error);
+        alert(`Upload failed: ${error.message}`);
         return false;
+    } finally {
+        const submitBtn = document.getElementById("profile-picture-submit");
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Upload";
     }
 }

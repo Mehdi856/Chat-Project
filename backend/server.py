@@ -48,9 +48,9 @@ websocket_manager = WebSocketManager()
 
 # ✅ Initialize Cloudinary
 cloudinary.config(
-    cloud_name=os.getenv("dp5bo6efq"), #CLOUDINARY_CLOUD_NAME
-    api_key=os.getenv("745961757372214"), #CLOUDINARY_API_KEY
-    api_secret=os.getenv("wCPIFMMQDMD4bFiLbk0Kvt_iy3c") #CLOUDINARY_API_SECRET
+    cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
+    api_key=os.getenv("CLOUDINARY_API_KEY"), 
+    api_secret=os.getenv("CLOUDINARY_API_SECRET")
 )
 
 
@@ -1128,10 +1128,9 @@ async def delete_group(group_id: str, request: Request):
 
 @app.post("/upload_profile_picture")
 async def upload_profile_picture(
-        file: UploadFile = File(...),
-        authorization: str = Header(None)
+    file: UploadFile = File(...),
+    authorization: str = Header(None)
 ):
-    """Uploads a profile picture for the authenticated user."""
     try:
         if not authorization:
             raise HTTPException(status_code=401, detail="Authorization header missing")
@@ -1145,36 +1144,38 @@ async def upload_profile_picture(
         if file.content_type not in ["image/jpeg", "image/png", "image/gif", "image/webp"]:
             raise HTTPException(status_code=400, detail="File must be an image (JPEG, PNG, GIF, or WEBP)")
 
-        file_bytes = await file.read()
-
-        # Upload image to Cloudinary with specific folder and transformation
+        # Upload to Cloudinary with user-specific folder
         upload_result = cloudinary.uploader.upload(
-            file_bytes,
-            folder="profile_pictures",
+            file.file,
+            folder=f"profile_pictures/{uid}",
             transformation=[
-                {"width": 300, "height": 300, "crop": "fill", "gravity": "face"},
-                {"radius": "max"}  # Makes the image circular
+                {"width": 300, "height": 300, "crop": "fill"},
+                {"quality": "auto"},
+                {"fetch_format": "auto"}
             ]
         )
 
-        # Get the URL of the uploaded image
-        profile_picture_url = upload_result["secure_url"]
+        # Get secure URL
+        profile_picture_url = upload_result.get("secure_url")
+        if not profile_picture_url:
+            raise HTTPException(status_code=500, detail="Failed to get image URL")
 
-        # Update user record in Firestore with the profile picture URL
-        user_ref = db.collection("users").document(uid)
-        user_ref.update({"profile_picture_url": profile_picture_url})
+        # Update user record
+        db.collection("users").document(uid).update({
+            "profile_picture_url": profile_picture_url
+        })
 
-        # Notify all connected devices of this user
+        # Notify client
         await websocket_manager.send_profile_picture_update(uid, profile_picture_url)
 
         return {
             "success": True,
-            "message": "Profile picture updated successfully",
             "profile_picture_url": profile_picture_url
         }
 
     except Exception as e:
-        return {"success": False, "error": str(e)}
+        print(f"Failed to upload profile picture: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/get_profile_picture")
