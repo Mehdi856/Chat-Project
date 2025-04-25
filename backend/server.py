@@ -1159,12 +1159,12 @@ async def upload_profile_picture(
         profile_picture_url = upload_result.get("secure_url")
         if not profile_picture_url:
             raise HTTPException(status_code=500, detail="Failed to get image URL")
-
+        # ✅ Update Firebase Auth (like display_name)
+        auth.update_user(uid, photo_url=profile_picture_url)  # Critical fix
         # Update user record
         db.collection("users").document(uid).update({
             "profile_picture_url": profile_picture_url
         })
-        print(profile_picture_url)
 
         # Notify client
         await websocket_manager.send_profile_picture_update(uid, profile_picture_url)
