@@ -280,15 +280,6 @@ async def websocket_endpoint(websocket: WebSocket):
                     sender_uid=sender_uid,
                     members=group_data.get("members", [])
                 )
-            elif message_type == "request_profile_picture":
-                # Client is requesting a profile picture update
-                user_ref = db.collection("users").document(sender_uid).get()
-                if user_ref.exists:
-                    user_data = user_ref.to_dict()
-                    await websocket.send_json({
-                        "type": "profile_picture_update",
-                        "profile_picture_url": user_data.get("profile_picture_url")
-                    })
 
     except WebSocketDisconnect:
         print(f"🔴 User {sender_uid} disconnected")

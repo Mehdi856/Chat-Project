@@ -2394,10 +2394,10 @@ async function uploadProfilePicture(file) {
             throw new Error(errorData.detail || "Failed to upload profile picture");
         }
 
-        const data = await response.json();
+        const newdata = await response.json();
         
         // Update local user data
-        user.profile_picture_url = data.profile_picture_url;
+        user.profile_picture_url = newdata.profile_picture_url;
         localStorage.setItem("user", JSON.stringify(user));
         
         // Update UI immediately
