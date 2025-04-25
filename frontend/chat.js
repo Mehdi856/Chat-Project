@@ -1154,7 +1154,12 @@ function renderGroups(groups) {
                         <span class="contact-name">${group.name}</span>
                         <span class="message-time">${timeString}</span>
                     </div>
-                    <div class="contact-preview">${lastMessageText}</div>               
+                    <div class="contact-preview">${lastMessageText}</div>
+                    <div class="group-privacy">
+                        ${group.is_private 
+                            ? '<i class="fas fa-lock"></i> Private' 
+                            : '<i class="fas fa-globe"></i> Public'}
+                    </div>
                 </div>
                 <span class="unread-count" style="display: none">
                     0
@@ -1212,6 +1217,12 @@ async function openGroupChat(group) {
     activeChat.style.display = "flex";
     
     chatNameElement.textContent = group.name;
+    // Add privacy indicator to chat header
+    const privacyIndicator = group.is_private 
+        ? '<span class="privacy-indicator"><i class="fas fa-lock"></i> Private</span>'
+        : '<span class="privacy-indicator"><i class="fas fa-globe"></i> Public</span>';
+    
+    contactUidElement.innerHTML = `Members: ${group.members.length} ${privacyIndicator}`;
     
     // Get member details first
     const members = await getGroupMembersDetails(group.members);
@@ -1368,6 +1379,7 @@ function showCreateGroupForm() {
 
 }
 
+// create group ,update to handle privacy toggle
 async function createGroup() {
     const groupName = document.getElementById("group-name-input").value.trim();
     if (!groupName) {
@@ -1375,12 +1387,12 @@ async function createGroup() {
         return;
     }
 
+    const isPrivate = document.getElementById("group-privacy-toggle").checked;
+
     try {
         const user = getCurrentUser();
         if (!user?.token) throw new Error("User not authenticated");
 
-        // For now, create group with just the current user
-        // need enhance this to add members later!! comment for myself
         const response = await fetch(`${BACKEND_URL}/groups`, {
             method: "POST",
             headers: {
@@ -1389,17 +1401,19 @@ async function createGroup() {
             },
             body: JSON.stringify({
                 name: groupName,
-                members: [user.uid] // Start with just the creator
+                members: [user.uid], // Start with just the creator
+                is_private: isPrivate // Include privacy setting
             })
         });
 
         if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
 
         const data = await response.json();
-        alert("Group created successfully!");
+        alert(`Group created successfully! (${isPrivate ? 'Private' : 'Public'})`);
         
         // Reset form
         document.getElementById("group-name-input").value = "";
+        document.getElementById("group-privacy-toggle").checked = false;
         document.getElementById("New-group").style.display = "none";
         noChatSelected.style.display = "flex";
         
@@ -1429,9 +1443,23 @@ function showMemberModal(action) {
     if (action === 'add') {
         title.textContent = "Add Member";
         document.getElementById("member-modal-confirm").style.display = "block";
-        // Show search for adding members
-        searchContainer.style.display = "block";
-        membersContainer.style.display = "none";
+        
+        // For private groups, show a message that only admins can add
+        if (currentGroupData && currentGroupData.is_private) {
+            searchContainer.innerHTML = `
+                <div class="private-group-notice">
+                    <i class="fas fa-lock"></i>
+                    <p>This is a private group. Only admins can add new members.</p>
+                </div>
+            `;
+            document.getElementById("member-modal-confirm").style.display = "none";
+        } else {
+            // Regular search input for public groups
+            searchContainer.innerHTML = `
+                <input type="text" id="member-search-input" placeholder="Search users...">
+                <div id="member-search-results" class="search-results"></div>
+            `;
+        }
     } else if (action === 'kick') {
         title.textContent = "Kick Member";
         document.getElementById("member-modal-confirm").style.display = "block";

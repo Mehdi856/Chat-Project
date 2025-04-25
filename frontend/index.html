@@ -118,6 +118,18 @@
             
             <div class="input-container">
               <input type="text" id="group-name-input" placeholder="Enter group name..." />
+            </div>\
+            <!-- Add this privacy toggle section -->
+            <div class="privacy-toggle-container">
+              <label class="privacy-toggle">
+                <input type="checkbox" id="group-privacy-toggle">
+                <span class="privacy-slider"></span>
+                <span class="privacy-label">Private Group</span>
+              </label>
+              <div class="privacy-hint">
+                <i class="fas fa-info-circle"></i>
+                Private groups require admin approval for new members
+              </div>
             </div>
             
             <button id="create-group-btn" class="primary-button">Create</button>
