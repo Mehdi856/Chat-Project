@@ -223,29 +223,53 @@ async function showUsernamePrompt(uid, token) {
 
 // Get current user from localStorage
 function getCurrentUser() {
-  const user = JSON.parse(localStorage.getItem("user"));
-  if (!user || !user.idToken || !user.uid) return null;
-
-  return {
-    email: user.email,
-    uid: user.uid,
-    name: user.name,
-    username: user.username,
-    token: user.idToken,
-    customToken: user.customToken,
-    profile_picture_url: user.profile_picture_url
-  };
+  const userStr = localStorage.getItem("user");
+  if (!userStr) return null;
+  
+  try {
+    const user = JSON.parse(userStr);
+    // Basic validation
+    if (!user || !user.uid) return null;
+    
+    // Ensure token is available - prefer idToken, fallback to customToken if needed
+    const token = user.idToken || user.customToken || null;
+    if (!token) return null;
+    
+    return {
+      email: user.email,
+      uid: user.uid,
+      name: user.name,
+      username: user.username,
+      token: token,
+      customToken: user.customToken,
+      idToken: user.idToken,
+      profile_picture_url: user.profile_picture_url
+    };
+  } catch (error) {
+    console.error("Error parsing user data:", error);
+    // Clear invalid data
+    localStorage.removeItem("user");
+    return null;
+  }
 }
 
 // Log out user
 async function logoutUser() {
   try {
     await signOut(auth);
+    // Clear all user data
     localStorage.removeItem("user");
+    sessionStorage.clear();
     window.location.href = "login.html";
   } catch (error) {
     console.error("Logout error:", error);
-    showMessage("Logout failed!", "error");
+    // Force clear even if Firebase logout fails
+    localStorage.removeItem("user");
+    sessionStorage.clear();
+    showMessage("Logout failed, but session was cleared locally.", "error");
+    setTimeout(() => {
+      window.location.href = "login.html";
+    }, 1500);
   }
 }
 
