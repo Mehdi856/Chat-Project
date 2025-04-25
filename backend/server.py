@@ -1146,3 +1146,35 @@ async def upload_profile_picture(
 
     except Exception as e:
         return {"success": False, "error": str(e)}
+
+
+@app.get("/get_profile_picture")
+async def get_profile_picture(authorization: str = Header(None)):
+    """Fetches the profile picture URL for the authenticated user."""
+    try:
+        if not authorization:
+            raise HTTPException(status_code=401, detail="Authorization header missing")
+
+        token = authorization.replace("Bearer ", "")
+        uid = verify_token(token)
+        if not uid:
+            raise HTTPException(status_code=401, detail="Invalid token")
+
+        user_ref = db.collection("users").document(uid)
+        user_doc = user_ref.get()
+
+        if not user_doc.exists:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        profile_picture_url = user_doc.to_dict().get("profile_picture_url")
+
+        if not profile_picture_url:
+            return {"success": True, "message": "No profile picture set yet", "profile_picture_url": None}
+
+        return {
+            "success": True,
+            "profile_picture_url": profile_picture_url
+        }
+
+    except Exception as e:
+        return {"success": False, "error": str(e)}
