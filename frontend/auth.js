@@ -135,7 +135,8 @@ async function loginUser(email, password) {
       name: data.name,
       username: data.username,
       customToken: data.token,
-      idToken: idToken
+      idToken: idToken,
+      profile_picture_url: null
     };
     
     // Store all user data
@@ -231,7 +232,8 @@ function getCurrentUser() {
     name: user.name,
     username: user.username,
     token: user.idToken,
-    customToken: user.customToken
+    customToken: user.customToken,
+    profile_picture_url: user.profile_picture_url
   };
 }
 

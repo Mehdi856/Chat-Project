@@ -1164,6 +1164,7 @@ async def upload_profile_picture(
         db.collection("users").document(uid).update({
             "profile_picture_url": profile_picture_url
         })
+        print(profile_picture_url)
 
         # Notify client
         await websocket_manager.send_profile_picture_update(uid, profile_picture_url)

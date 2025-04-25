@@ -64,23 +64,33 @@ let isCaller = false;
 // Initialize chat when page loads
 document.addEventListener('DOMContentLoaded', initChat);
 
+// In chat.js, modify the initChat function:
 async function initChat() {
+    // First check if user is authenticated
     const user = getCurrentUser();
-    if (!user) {
+    if (!user || !user.token) {
         window.location.href = "login.html";
         return;
     }
 
-    updateUserHeader(user);
-    displayUserUid(user);
-    await loadContacts();
-    await loadGroups();
-    await fetchPendingContactRequests();
-    setupWebSocket(user);
-    setupEventListeners();
-    setupSearchListeners();
-    // Initialize profile picture
-    await initProfilePicture();
+    // Simple token validation (just check if it exists)
+    // Remove the verify_token endpoint check since it doesn't exist
+    try {
+        updateUserHeader(user);
+        displayUserUid(user);
+        await loadContacts();
+        await loadGroups();
+        await fetchPendingContactRequests();
+        setupWebSocket(user);
+        setupEventListeners();
+        setupSearchListeners();
+        await initProfilePicture();
+    } catch (error) {
+        console.error("Initialization error:", error);
+        // If initialization fails, log out and redirect
+        logoutUser();
+        window.location.href = "login.html";
+    }
 }
 
 // Update the updateUserHeader function to handle profile pictures
@@ -2390,12 +2400,22 @@ async function uploadProfilePicture(file) {
         user.profile_picture_url = data.profile_picture_url;
         localStorage.setItem("user", JSON.stringify(user));
         
-        // Update UI
+        // Update UI immediately
         updateProfilePictureUI(user);
+        
+        // Broadcast the update to all connected clients via WebSocket
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({
+                type: "profile_picture_update",
+                profile_picture_url: data.profile_picture_url,
+                uid: user.uid
+            }));
+        }
         
         // Close modal
         document.getElementById("profile-picture-modal").style.display = "none";
         
+        alert("Profile picture updated successfully!");
         return true;
     } catch (error) {
         console.error("Upload error:", error);
@@ -2403,7 +2423,9 @@ async function uploadProfilePicture(file) {
         return false;
     } finally {
         const submitBtn = document.getElementById("profile-picture-submit");
-        submitBtn.disabled = false;
-        submitBtn.textContent = "Upload";
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = 'Upload';
+        }
     }
 }
