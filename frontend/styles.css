@@ -2928,3 +2928,291 @@ input:checked + .privacy-slider:before {
   font-size: 1rem;
   color: #bdc3c7;
 }
+/* ==================== */
+/* Profile Picture Styles */
+/* ==================== */
+
+/* Avatar container base styles */
+.contact-avatar, 
+.user-avatar, 
+.chat-avatar,
+.search-result-avatar,
+.member-search-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+  position: relative;
+  background-color: #f0f0f0;
+}
+
+/* Avatar image styles */
+.contact-avatar-img,
+.chat-avatar-img,
+.header-avatar-img,
+.search-result-avatar-img,
+.profile-picture-preview-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Avatar initials fallback */
+.contact-avatar-initials,
+.chat-avatar-initials,
+.header-avatar-initials,
+.search-result-avatar-initials {
+  font-weight: 600;
+  color: white;
+  font-size: 16px;
+}
+
+/* Header avatar specific */
+.user-avatar {
+  width: 36px;
+  height: 36px;
+  margin-right: 10px;
+}
+
+/* Chat header avatar */
+.chat-avatar {
+  width: 36px;
+  height: 36px;
+  margin-right: 10px;
+}
+
+/* Search result avatar */
+.search-result-avatar {
+  width: 45px;
+  height: 45px;
+}
+
+/* Member search avatar */
+.member-search-avatar {
+  width: 30px;
+  height: 30px;
+  font-size: 14px;
+}
+
+/* Profile Picture Modal Styles */
+.profile-picture-modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  z-index: 1000;
+  justify-content: center;
+  align-items: center;
+}
+
+.profile-picture-content {
+  background: white;
+  padding: 25px;
+  border-radius: 15px;
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 5px 25px rgba(0, 0, 0, 0.2);
+  text-align: center;
+  animation: modalFadeIn 0.3s ease-out;
+}
+
+.profile-picture-content h3 {
+  margin-top: 0;
+  margin-bottom: 20px;
+  color: #333;
+  font-size: 1.4rem;
+}
+
+.profile-picture-preview {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  margin: 0 auto 20px;
+  background-color: #f5f5f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 3px solid #eaeaea;
+}
+
+.profile-picture-preview .default-avatar {
+  font-size: 80px;
+  color: #ccc;
+}
+
+#profile-picture-file {
+  width: 100%;
+  margin-bottom: 20px;
+  padding: 10px;
+  border: 1px dashed #ccc;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+#profile-picture-file:hover {
+  border-color: #2e57df;
+  background-color: #f8faff;
+}
+
+.profile-picture-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+}
+
+#profile-picture-cancel,
+#profile-picture-submit {
+  padding: 10px 25px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+#profile-picture-cancel {
+  background-color: #f0f0f0;
+  color: #555;
+}
+
+#profile-picture-cancel:hover {
+  background-color: #e0e0e0;
+}
+
+#profile-picture-submit {
+  background: linear-gradient(135deg, #2e57df, #193286);
+  color: white;
+  box-shadow: 0 3px 10px rgba(110, 142, 251, 0.3);
+}
+
+#profile-picture-submit:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(110, 142, 251, 0.4);
+}
+
+#profile-picture-submit:disabled {
+  background: #ccc;
+  box-shadow: none;
+  transform: none;
+  cursor: not-allowed;
+}
+
+/* Loading state for profile picture upload */
+.profile-picture-uploading {
+  position: relative;
+}
+
+.profile-picture-uploading::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Profile picture in dropdown menu */
+#change-profile-picture-btn {
+  width: 100%;
+  padding: 10px 16px;
+  text-align: left;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #333;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+}
+
+#change-profile-picture-btn:hover {
+  background-color: #f5f5f5;
+}
+
+#change-profile-picture-btn i {
+  color: #2e57df;
+  width: 20px;
+  text-align: center;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .profile-picture-content {
+    width: 95%;
+    padding: 20px;
+  }
+  
+  .profile-picture-preview {
+    width: 120px;
+    height: 120px;
+  }
+  
+  .profile-picture-buttons {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  #profile-picture-cancel,
+  #profile-picture-submit {
+    width: 100%;
+  }
+}
+
+/* Animation for profile picture change */
+@keyframes avatarPulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+.avatar-updated {
+  animation: avatarPulse 0.5s ease;
+}
+
+/* Skeleton loading for avatars */
+.avatar-skeleton {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: skeletonLoading 1.5s infinite;
+  border-radius: 50%;
+}
+
+@keyframes skeletonLoading {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Group member avatars */
+.member-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  margin-right: 10px;
+  flex-shrink: 0;
+}
+
+/* Message avatars (if you want to show sender avatars in messages) */
+.message-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  margin-right: 8px;
+  align-self: flex-start;
+}

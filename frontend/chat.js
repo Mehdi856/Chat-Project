@@ -79,22 +79,29 @@ async function initChat() {
     setupWebSocket(user);
     setupEventListeners();
     setupSearchListeners();
+    // Initialize profile picture
+    await initProfilePicture();
 }
 
+// Update the updateUserHeader function to handle profile pictures
 function updateUserHeader(user) {
     if (user && user.name) {
-        // Remove the text-skeleton class to prevent box appearance
         userInfoElement.classList.remove("text-skeleton");
         userInfoElement.textContent = user.name;
         
-        const firstLetter = user.name.charAt(0).toUpperCase();
-        userAvatarElement.innerHTML = firstLetter; // Changed from textContent to innerHTML
-        userAvatarElement.classList.remove("avatar-skeleton"); // Remove skeleton class
-        
-        // Generate a color based on the name
-        const colors = ['#6e8efb', '#a777e3', '#4CAF50', '#FF5722', '#607D8B'];
-        const colorIndex = user.name.length % colors.length;
-        userAvatarElement.style.background = colors[colorIndex];
+        // Handle profile picture if available
+        if (user.profile_picture_url) {
+            userAvatarElement.innerHTML = `<img src="${user.profile_picture_url}" alt="Profile">`;
+            userAvatarElement.classList.remove("avatar-skeleton");
+        } else {
+            // Fallback to initials if no profile picture
+            const firstLetter = user.name.charAt(0).toUpperCase();
+            userAvatarElement.innerHTML = firstLetter;
+            userAvatarElement.classList.remove("avatar-skeleton");
+            const colors = ['#6e8efb', '#a777e3', '#4CAF50', '#FF5722', '#607D8B'];
+            const colorIndex = user.name.length % colors.length;
+            userAvatarElement.style.background = colors[colorIndex];
+        }
     } else {
         // Fallback if name isn't available
         userInfoElement.classList.remove("text-skeleton");
@@ -158,6 +165,7 @@ function sortContactsByRecentMessage(contacts) {
     });
 }
 
+// Update renderContacts to properly display contact profile pictures
 function renderContacts(contacts) {
     contactsContainer.innerHTML = "";
     
@@ -166,23 +174,26 @@ function renderContacts(contacts) {
         contactItem.classList.add("contact-item");
         contactItem.dataset.uid = contact.uid;
         
-        const firstLetter = (contact.name || contact.username)?.charAt(0).toUpperCase() || "?";
-        const colors = ['#6e8efb', '#a777e3', '#4CAF50', '#FF5722', '#607D8B'];
-        const colorIndex = (contact.name || contact.username)?.length % colors.length || 0;
-        const avatarColor = colors[colorIndex];
+        // Use profile picture if available, otherwise fall back to initials
+        let avatarHTML;
+        if (contact.profile_picture_url) {
+            avatarHTML = `<img src="${contact.profile_picture_url}" alt="${contact.name}" class="contact-avatar-img">`;
+        } else {
+            const firstLetter = (contact.name || contact.username)?.charAt(0).toUpperCase() || "?";
+            const colors = ['#6e8efb', '#a777e3', '#4CAF50', '#FF5722', '#607D8B'];
+            const colorIndex = (contact.name || contact.username)?.length % colors.length || 0;
+            avatarHTML = `<div class="contact-avatar-initials" style="background: ${colors[colorIndex]}">${firstLetter}</div>`;
+        }
         
-        // Use improved getLastMessagePreview function to always get the most recent message
         const lastMessage = getLastMessagePreview(contact.uid);
         const lastMessageText = lastMessage?.text || "No messages yet";
-        
-        // Format time based on message age (today, yesterday, or date)
         let timeString = "";
         if (lastMessage?.timestamp) {
             timeString = formatMessageTime(new Date(lastMessage.timestamp));
         }
         
         contactItem.innerHTML = `
-            <div class="contact-avatar" style="background: ${avatarColor}">${firstLetter}</div>
+            <div class="contact-avatar">${avatarHTML}</div>
             <div class="contact-info">
                 <div class="contact-name-row">
                     <span class="contact-name">${contact.name || contact.username}</span>
@@ -245,9 +256,10 @@ function formatDate(date) {
     return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
 }
 
+// Update openChat to handle profile pictures in chat header
 async function openChat(contact) {
     currentChatUID = contact.uid;
-    currentGroupId = null; // Ensure group ID is cleared
+    currentGroupId = null;
     messagesContainer.innerHTML = "";
     unreadMessages[contact.uid] = 0;
     updateContactUI();
@@ -257,20 +269,23 @@ async function openChat(contact) {
     document.getElementById("New-contact").style.display = "none";
     document.getElementById("New-group").style.display = "none";
     
-    // Reset menu items to private chat mode
     document.querySelectorAll('.private-chat-only').forEach(el => el.style.display = 'block');
     document.querySelectorAll('.group-chat-only').forEach(el => el.style.display = 'none');
     
     chatNameElement.textContent = contact.name || contact.username;
     contactUidElement.textContent = `Username: ${contact.username}`;
     
-    const firstLetter = (contact.name || contact.username)?.charAt(0).toUpperCase() || "?";
-    chatAvatarElement.textContent = firstLetter;
-    const colors = ['#6e8efb', '#a777e3', '#4CAF50', '#FF5722', '#607D8B'];
-    const colorIndex = (contact.name || contact.username)?.length % colors.length || 0;
-    chatAvatarElement.style.background = colors[colorIndex];
+    // Handle profile picture in chat header
+    if (contact.profile_picture_url) {
+        chatAvatarElement.innerHTML = `<img src="${contact.profile_picture_url}" alt="${contact.name}" class="chat-avatar-img">`;
+    } else {
+        const firstLetter = (contact.name || contact.username)?.charAt(0).toUpperCase() || "?";
+        chatAvatarElement.innerHTML = firstLetter;
+        const colors = ['#6e8efb', '#a777e3', '#4CAF50', '#FF5722', '#607D8B'];
+        const colorIndex = (contact.name || contact.username)?.length % colors.length || 0;
+        chatAvatarElement.style.background = colors[colorIndex];
+    }
 
-    // Reload messages to ensure we have the latest
     const messages = await loadMessages(contact.uid);
     messagesData[contact.uid] = messages;
     renderMessages(messages);
@@ -474,6 +489,14 @@ function setupWebSocket(user) {
                 showGroupTypingIndicator(data.group_id, data.sender);
             } else if (data.type === "notification") {
                 fetchPendingContactRequests();
+            } else if (data.type === "profile_picture_update") {
+                // Update profile picture in UI
+                const user = getCurrentUser();
+                if (user && data.profile_picture_url) {
+                    user.profile_picture_url = data.profile_picture_url;
+                    localStorage.setItem("user", JSON.stringify(user));
+                    updateProfilePictureUI(user);
+                }
             } else if (data.type === 'webrtc_offer') {
                 handleIncomingCall(data);
             } else if (data.type === 'webrtc_answer') {
@@ -670,7 +693,16 @@ function setupEventListeners() {
         currentChatUID = null;
         currentGroupId = null;
     });
+    // Add profile picture button to dropdown menu
+    const dropdownMenu = document.querySelector('.menu-dropdown');
+    const profilePictureButton = document.createElement('button');
+    profilePictureButton.id = "change-profile-picture-btn";
+    profilePictureButton.innerHTML = '<i class="fas fa-camera"></i> Change Profile Picture';
+    dropdownMenu.insertBefore(profilePictureButton, dropdownMenu.firstChild);
     
+    profilePictureButton.addEventListener("click", () => {
+        document.getElementById("profile-picture-modal").style.display = "flex";
+    });
     backButtonChat.addEventListener("click", () => {
         activeChat.style.display = "none";
         noChatSelected.style.display = "flex";
@@ -688,7 +720,73 @@ function setupEventListeners() {
     document.addEventListener('click', function() {
         dropdown.style.display = 'none';
     });
+    // Profile picture file input change
+    document.getElementById("profile-picture-file").addEventListener("change", (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                document.getElementById("profile-picture-preview").innerHTML = `
+                    <img src="${event.target.result}" alt="Preview" class="profile-picture-preview-img">
+                `;
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
+    // Profile picture cancel button
+    document.getElementById("profile-picture-cancel").addEventListener("click", () => {
+        document.getElementById("profile-picture-modal").style.display = "none";
+        document.getElementById("profile-picture-file").value = "";
+    });
+
+    // Profile picture submit button
+    document.getElementById("profile-picture-submit").addEventListener("click", async () => {
+        const fileInput = document.getElementById("profile-picture-file");
+        if (fileInput.files.length > 0) {
+            const success = await uploadProfilePicture(fileInput.files[0]);
+            if (success) {
+                document.getElementById("profile-picture-modal").style.display = "none";
+                fileInput.value = "";
+            }
+        } else {
+            alert("Please select an image file first");
+        }
+    });
+    // Profile picture upload
+    document.getElementById("change-profile-picture-btn").addEventListener("click", () => {
+        document.getElementById("profile-picture-modal").style.display = "flex";
+    });
     
+    document.getElementById("profile-picture-cancel").addEventListener("click", () => {
+        document.getElementById("profile-picture-modal").style.display = "none";
+    });
+    
+    document.getElementById("profile-picture-submit").addEventListener("click", async () => {
+        const fileInput = document.getElementById("profile-picture-file");
+        if (fileInput.files.length > 0) {
+            const success = await uploadProfilePicture(fileInput.files[0]);
+            if (success) {
+                fileInput.value = ""; // Clear the file input
+            }
+        } else {
+            alert("Please select a file first");
+        }
+    });
+    
+    // Preview profile picture before upload
+    document.getElementById("profile-picture-file").addEventListener("change", (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                document.getElementById("profile-picture-preview").innerHTML = `
+                    <img src="${event.target.result}" alt="Preview">
+                `;
+            };
+            reader.readAsDataURL(file);
+        }
+    });
     // Tab switching functionality
     dmsTab.addEventListener("click", () => {
         dmsTab.classList.add("active");
@@ -1336,7 +1434,7 @@ async function handleUserSearch(e) {
     }
 }
 
-// Display search results
+// Update displaySearchResults to show profile pictures in search results
 function displaySearchResults(users) {
     searchResultsContainer.innerHTML = "";
     
@@ -1350,31 +1448,35 @@ function displaySearchResults(users) {
     }
 
     users.forEach(user => {
-        // Skip the current user in search results
         const currentUser = getCurrentUser();
         if (user.uid === currentUser?.uid) return;
 
         const resultItem = document.createElement("div");
         resultItem.classList.add("search-result-item");
         
-        const firstLetter = user.name?.charAt(0).toUpperCase() || "?";
-        const colors = ['#6e8efb', '#a777e3', '#4CAF50', '#FF5722', '#607D8B'];
-        const colorIndex = user.name?.length % colors.length || 0;
-        const avatarColor = colors[colorIndex];
+        // Handle profile picture or initials
+        let avatarHTML;
+        if (user.profile_picture_url) {
+            avatarHTML = `<img src="${user.profile_picture_url}" alt="${user.name}" class="search-result-avatar-img">`;
+        } else {
+            const firstLetter = user.name?.charAt(0).toUpperCase() || "?";
+            const colors = ['#6e8efb', '#a777e3', '#4CAF50', '#FF5722', '#607D8B'];
+            const colorIndex = user.name?.length % colors.length || 0;
+            avatarHTML = `<div class="search-result-avatar-initials" style="background: ${colors[colorIndex]}">${firstLetter}</div>`;
+        }
         
         resultItem.innerHTML = `
-    <div class="search-result-avatar" style="background: ${avatarColor}">${firstLetter}</div>
-    <div class="search-result-info">
-        <div class="search-result-name">${user.name || "Unknown"}</div>
-        <div class="search-result-username">@${user.username || ""}</div>
-    </div>
-    <button class="add-contact-btn" data-uid="${user.uid}">Add Contact</button>
-`;
+            <div class="search-result-avatar">${avatarHTML}</div>
+            <div class="search-result-info">
+                <div class="search-result-name">${user.name || "Unknown"}</div>
+                <div class="search-result-username">@${user.username || ""}</div>
+            </div>
+            <button class="add-contact-btn" data-uid="${user.uid}">Add Contact</button>
+        `;
         
         searchResultsContainer.appendChild(resultItem);
     });
 
-    // Add event listeners to all add contact buttons
     document.querySelectorAll(".add-contact-btn").forEach(btn => {
         btn.addEventListener("click", (e) => {
             e.stopPropagation();
@@ -2205,5 +2307,98 @@ async function deleteGroup() {
     } catch (error) {
         console.error("❌ Error deleting group:", error);
         alert("Failed to delete group. Try again.");
+    }
+}
+async function initProfilePicture() {
+    try {
+        const user = getCurrentUser();
+        if (!user) return;
+
+        // Check if we already have the profile picture URL
+        if (!user.profile_picture_url) {
+            const response = await fetch(`${BACKEND_URL}/get_profile_picture`, {
+                headers: { Authorization: `Bearer ${user.token}` },
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success && data.profile_picture_url) {
+                    // Update local user data
+                    user.profile_picture_url = data.profile_picture_url;
+                    localStorage.setItem("user", JSON.stringify(user));
+                }
+            }
+        }
+
+        // Update UI with profile picture
+        updateProfilePictureUI(user);
+    } catch (error) {
+        console.error("Failed to load profile picture:", error);
+    }
+}
+
+function updateProfilePictureUI(user) {
+    if (!user) return;
+
+    // Update user avatar in header
+    const userAvatar = document.getElementById("user-avatar");
+    if (userAvatar) {
+        if (user.profile_picture_url) {
+            userAvatar.innerHTML = `<img src="${user.profile_picture_url}" alt="Profile" class="header-avatar-img">`;
+            userAvatar.classList.remove("avatar-skeleton");
+        } else {
+            // Fallback to initials
+            const firstLetter = user.name?.charAt(0).toUpperCase() || "U";
+            userAvatar.innerHTML = firstLetter;
+            userAvatar.classList.remove("avatar-skeleton");
+            const colors = ['#6e8efb', '#a777e3', '#4CAF50', '#FF5722', '#607D8B'];
+            const colorIndex = user.name?.length % colors.length || 0;
+            userAvatar.style.background = colors[colorIndex];
+        }
+    }
+}
+
+async function uploadProfilePicture(file) {
+    try {
+        const user = getCurrentUser();
+        if (!user?.token) throw new Error("User not authenticated");
+
+        const formData = new FormData();
+        formData.append("file", file);
+
+        const response = await fetch(`${BACKEND_URL}/upload_profile_picture`, {
+            method: "POST",
+            headers: {
+                Authorization: `Bearer ${user.token}`
+            },
+            body: formData
+        });
+
+        if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
+
+        const data = await response.json();
+        if (data.success) {
+            // Update local user data
+            user.profile_picture_url = data.profile_picture_url;
+            localStorage.setItem("user", JSON.stringify(user));
+            
+            // Update UI
+            updateProfilePictureUI(user);
+            
+            // Notify all connected devices
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    type: "request_profile_picture"
+                }));
+            }
+            
+            return true;
+        } else {
+            throw new Error(data.error || "Failed to upload profile picture");
+        }
+    } catch (error) {
+        console.error("Failed to upload profile picture:", error);
+        alert(`Failed to upload: ${error.message}`);
+        return false;
     }
 }
