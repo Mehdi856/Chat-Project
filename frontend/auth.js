@@ -302,6 +302,4 @@ function showMessage(message, type = "info") {
     }, 300);
   }, 3000);
 }
-
-// Export functions
 export { showMessage, registerUser, loginUser, getCurrentUser, logoutUser };
