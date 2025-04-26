@@ -1723,10 +1723,14 @@ function renderGroups(groups) {
             groupItem.classList.add("contact-item");
             groupItem.dataset.groupId = group.id;
             
+            // Use same pattern for creating avatar as in renderContacts
             const firstLetter = group.name?.charAt(0).toUpperCase() || "G";
             const colors = ['#6e8efb', '#a777e3', '#4CAF50', '#FF5722', '#607D8B'];
             const colorIndex = group.name?.length % colors.length || 0;
             const avatarColor = colors[colorIndex];
+            
+            // Create avatar HTML using the same pattern as contact avatars
+            const avatarHTML = `<div class="contact-avatar-initials" style="background: ${avatarColor}">${firstLetter}</div>`;
             
             const lastMessage = getLastGroupMessagePreview(group.id);
             const lastMessageText = lastMessage?.text || "No messages yet";
@@ -1737,18 +1741,18 @@ function renderGroups(groups) {
             }
             
             groupItem.innerHTML = `
-                <div class="contact-avatar" style="background: ${avatarColor}">${firstLetter}</div>
+                <div class="contact-avatar">${avatarHTML}</div>
                 <div class="contact-info">
                     <div class="contact-name-row">
                         <span class="contact-name">${group.name}</span>
                         <span class="message-time">${timeString}</span>
                     </div>
                     <div class="contact-preview">${lastMessageText}</div>
-                    <div class="group-privacy">
-                        ${group.is_private 
-                            ? '<i class="fas fa-lock"></i> Private' 
-                            : '<i class="fas fa-globe"></i> Public'}
-                    </div>
+                </div>
+                <div class="group-privacy">
+                    ${group.is_private 
+                        ? '<i class="fas fa-lock"></i> Private' 
+                        : '<i class="fas fa-globe"></i> Public'}
                 </div>
                 <span class="unread-count" style="display: none">
                     0
@@ -2135,15 +2139,25 @@ function displayMemberSearchResults(users) {
         const resultItem = document.createElement("div");
         resultItem.classList.add("member-search-item");
         
+        // Use profile picture if available, otherwise fallback to first letter
+        let avatarHTML = '';
         const firstLetter = (user.name || user.username || "?").charAt(0).toUpperCase();
         const colors = ['#6e8efb', '#a777e3', '#4CAF50', '#FF5722', '#607D8B'];
         const colorIndex = (user.name || user.username || "").length % colors.length;
         
+        if (user.profile_picture_url) {
+            avatarHTML = `<div class="member-avatar-container"><img src="${user.profile_picture_url}" alt="${firstLetter}" class="member-avatar-img"></div>`;
+        } else {
+            avatarHTML = `<div class="member-avatar-container"><div class="member-avatar" style="background: ${colors[colorIndex]}">${firstLetter}</div></div>`;
+        }
+        
         resultItem.innerHTML = `
-            <div class="member-search-avatar" style="background: ${colors[colorIndex]}">${firstLetter}</div>
-            <div>
-                <div>${user.name || "Unknown"}</div>
-                <small>@${user.username || ""}</small>
+            <div class="member-info">
+                ${avatarHTML}
+                <div class="member-details">
+                    <div class="member-name">${user.name || "Unknown"}</div>
+                    <div class="member-username">@${user.username || ""}</div>
+                </div>
             </div>
         `;
         
@@ -2161,6 +2175,9 @@ function displayMemberSearchResults(users) {
             resultsContainer.style.display = "none";
             resultsContainer.innerHTML = "";
             document.getElementById("member-search-input").value = "";
+            
+            // Show confirm button after selection
+            document.getElementById("member-modal-confirm").style.display = "block";
         });
         
         resultsContainer.appendChild(resultItem);
@@ -2179,12 +2196,13 @@ async function confirmMemberAction() {
         const user = getCurrentUser();
         if (!user?.token) throw new Error("User not authenticated");
         
+        // Show loading state
+        const confirmButton = document.getElementById("member-modal-confirm");
+        const originalText = confirmButton.textContent;
+        confirmButton.disabled = true;
+        
         if (currentModalAction === 'add') {
-            // Show loading state
-            const confirmButton = document.getElementById("member-modal-confirm");
-            const originalText = confirmButton.textContent;
             confirmButton.textContent = "Adding...";
-            confirmButton.disabled = true;
             
             // Call backend to add member by UID
             const response = await fetch(`${BACKEND_URL}/groups/${currentGroupId}/members`, {
@@ -2196,47 +2214,72 @@ async function confirmMemberAction() {
                 body: JSON.stringify({ members: [selectedMember.uid] })
             });
             
-            // Reset button state
-            confirmButton.textContent = originalText;
-            confirmButton.disabled = false;
-            
-            if (!response.ok) throw new Error(`Failed to add member: ${response.statusText}`);
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || `Failed to add member: ${response.statusText}`);
+            }
             
             alert(`${selectedMember.name} added to group successfully!`);
-            // Close the modal
-            closeMemberModal();
         } else if (currentModalAction === 'kick') {
-            // Show loading state
-            const confirmButton = document.getElementById("member-modal-confirm");
-            const originalText = confirmButton.textContent;
             confirmButton.textContent = "Removing...";
-            confirmButton.disabled = true;
             
             // Call backend to kick member by UID
             const response = await fetch(`${BACKEND_URL}/groups/${currentGroupId}/members/${selectedMember.uid}`, {
                 method: "DELETE",
                 headers: {
-                    "Content-Type": "application/json",
                     Authorization: `Bearer ${user.token}`
                 }
             });
             
-            // Reset button state
-            confirmButton.textContent = originalText;
-            confirmButton.disabled = false;
-            
-            if (!response.ok) throw new Error(`Failed to kick member: ${response.statusText}`);
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || `Failed to remove member: ${response.statusText}`);
+            }
             
             alert(`${selectedMember.name} removed from group successfully!`);
-            // Close the modal
-            closeMemberModal();
         }
         
-        // Refresh group data
-        await loadGroups();
+        // Reset button state
+        confirmButton.textContent = originalText;
+        confirmButton.disabled = false;
+        
+        // Close the modal
+        closeMemberModal();
+        
+        // Refresh current group data
+        await refreshCurrentGroup();
     } catch (error) {
         console.error(`Error in member action:`, error);
         alert(`Error: ${error.message}`);
+        
+        // Reset button state
+        const confirmButton = document.getElementById("member-modal-confirm");
+        confirmButton.textContent = currentModalAction === 'add' ? "Add Member" : "Kick Member";
+        confirmButton.disabled = false;
+    }
+}
+
+// Add a new function to refresh the current group data
+async function refreshCurrentGroup() {
+    if (!currentGroupId) return;
+    
+    try {
+        await loadGroups();
+        
+        // Find the updated group data
+        const updatedGroup = groupsData.find(group => group.id === currentGroupId);
+        if (updatedGroup) {
+            // Update current group data
+            currentGroupData = updatedGroup;
+            
+            // Update UI if needed
+            const memberCountElement = document.querySelector(`[data-group-id="${currentGroupId}"] .group-member-count`);
+            if (memberCountElement) {
+                memberCountElement.textContent = `${updatedGroup.members.length} members`;
+            }
+        }
+    } catch (error) {
+        console.error("Failed to refresh group data:", error);
     }
 }
 
@@ -2259,33 +2302,49 @@ async function displayGroupMembers() {
     cancelButton.textContent = "Close"; // Change text to "Close"
     membersContainer.style.display = "block";
     
-    // Clear and populate members list
-    membersContainer.innerHTML = "";
+    // Show loading indicator
+    membersContainer.innerHTML = '<div class="loading-members">Loading members...</div>';
     
-    // Get detailed member info
-    const members = await getGroupMembersDetails(currentGroupData.members);
-    
-    members.forEach(member => {
-        const memberItem = document.createElement("div");
-        memberItem.classList.add("member-item");
+    try {
+        // Get detailed member info
+        const members = await getGroupMembersDetails(currentGroupData.members);
         
-        const firstLetter = (member.name || member.username || "?").charAt(0).toUpperCase();
-        const colors = ['#6e8efb', '#a777e3', '#4CAF50', '#FF5722', '#607D8B'];
-        const colorIndex = (member.name || member.username || "").length % colors.length;
+        // Clear and populate members list
+        membersContainer.innerHTML = "";
         
-        memberItem.innerHTML = `
-            <div style="display: flex; align-items: center;">
-                <div class="member-search-avatar" style="background: ${colors[colorIndex]}">${firstLetter}</div>
-                <div>
-                    <div>${member.name || "Unknown"}</div>
-                    <small>@${member.username || ""}</small>
+        members.forEach(member => {
+            const memberItem = document.createElement("div");
+            memberItem.classList.add("member-item");
+            
+            // Use profile picture if available, otherwise fallback to first letter
+            let avatarHTML = '';
+            const firstLetter = (member.name || member.username || "?").charAt(0).toUpperCase();
+            const colors = ['#6e8efb', '#a777e3', '#4CAF50', '#FF5722', '#607D8B'];
+            const colorIndex = (member.name || member.username || "").length % colors.length;
+            
+            if (member.profile_picture_url) {
+                avatarHTML = `<img src="${member.profile_picture_url}" alt="${firstLetter}" class="member-avatar-img">`;
+            } else {
+                avatarHTML = `<div class="member-avatar" style="background: ${colors[colorIndex]}">${firstLetter}</div>`;
+            }
+            
+            memberItem.innerHTML = `
+                <div class="member-info">
+                    <div class="member-avatar-container">${avatarHTML}</div>
+                    <div class="member-details">
+                        <div class="member-name">${member.name || "Unknown"}</div>
+                        <div class="member-username">@${member.username || ""}</div>
+                    </div>
+                    ${member.uid === currentGroupData.creator ? '<div class="creator-badge">Creator</div>' : ''}
                 </div>
-            </div>
-            ${member.uid === currentGroupData.creator ? '<small>(Creator)</small>' : ''}
-        `;
-        
-        membersContainer.appendChild(memberItem);
-    });
+            `;
+            
+            membersContainer.appendChild(memberItem);
+        });
+    } catch (error) {
+        console.error("Error loading members:", error);
+        membersContainer.innerHTML = `<div class="error-message">Error loading members</div>`;
+    }
 
     modal.style.display = "flex";
 }
@@ -2311,6 +2370,7 @@ async function getGroupMembersDetails(memberUids) {
             const user = getCurrentUser();
             if (!user?.token) continue;
             
+            // Fetch details for each user individually
             const response = await fetch(`${BACKEND_URL}/user_details/${uid}`, {
                 headers: { Authorization: `Bearer ${user.token}` },
             });
@@ -2380,19 +2440,26 @@ async function displayCurrentMembersForKick() {
             const memberItem = document.createElement("div");
             memberItem.classList.add("member-item", "kick-member-item");
             
+            // Use profile picture if available, otherwise fallback to first letter
+            let avatarHTML = '';
             const firstLetter = (member.name || member.username || "?").charAt(0).toUpperCase();
             const colors = ['#6e8efb', '#a777e3', '#4CAF50', '#FF5722', '#607D8B'];
             const colorIndex = (member.name || member.username || "").length % colors.length;
             
+            if (member.profile_picture_url) {
+                avatarHTML = `<img src="${member.profile_picture_url}" alt="${firstLetter}" class="member-avatar-img">`;
+            } else {
+                avatarHTML = `<div class="member-avatar" style="background: ${colors[colorIndex]}">${firstLetter}</div>`;
+            }
+            
             memberItem.innerHTML = `
-                <div style="display: flex; align-items: center;">
-                    <div class="member-search-avatar" style="background: ${colors[colorIndex]}">${firstLetter}</div>
-                    <div>
-                        <div>${member.name || "Unknown"}</div>
-                        <small>@${member.username || ""}</small>
+                <div class="member-info">
+                    <div class="member-avatar-container">${avatarHTML}</div>
+                    <div class="member-details">
+                        <div class="member-name">${member.name || "Unknown"}</div>
+                        <div class="member-username">@${member.username || ""}</div>
                     </div>
                 </div>
-                ${member.uid === currentGroupData.creator ? '<small>(Creator)</small>' : ''}
             `;
             
             memberItem.addEventListener("click", () => {
@@ -2413,6 +2480,7 @@ async function displayCurrentMembersForKick() {
                 document.getElementById("selected-member-uid").value = member.uid;
                 document.getElementById("selected-member-display").style.display = "block";
                 confirmButton.style.display = "block";
+                confirmButton.textContent = "Kick Member";
             });
             
             membersContainer.appendChild(memberItem);
