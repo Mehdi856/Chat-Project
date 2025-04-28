@@ -1220,3 +1220,109 @@ async def batch_user_details(uids: List[str], request: Request):
             })
     
     return {"users": users}
+
+@app.post("/groups/{group_id}/add_request")
+async def request_add_member(group_id: str, request_data: dict, request: Request):
+    """Allows a group member to request adding a new member to a private group."""
+    token = request.headers.get("Authorization", "").replace("Bearer ", "")
+    requester_uid = verify_token(token)
+    if not token or not requester_uid:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    new_member_uid = request_data.get("new_member_uid")
+    if not new_member_uid:
+        raise HTTPException(status_code=400, detail="No new member UID provided")
+
+    group_ref = db.collection("groups").document(group_id)
+    group_doc = group_ref.get()
+    if not group_doc.exists:
+        raise HTTPException(status_code=404, detail="Group not found")
+    group_data = group_doc.to_dict()
+    if requester_uid not in group_data.get("members", []):
+        raise HTTPException(status_code=403, detail="Only group members can request to add members")
+    if not group_data.get("is_private", False):
+        raise HTTPException(status_code=400, detail="This is not a private group")
+    if new_member_uid in group_data.get("members", []):
+        raise HTTPException(status_code=400, detail="User is already a member")
+
+    # Store request in subcollection
+    add_requests_ref = group_ref.collection("add_requests")
+    # Prevent duplicate requests
+    existing = add_requests_ref.where("new_member_uid", "==", new_member_uid).where("status", "==", "pending").get()
+    if existing:
+        raise HTTPException(status_code=400, detail="A pending request for this user already exists")
+    add_requests_ref.add({
+        "requester_uid": requester_uid,
+        "new_member_uid": new_member_uid,
+        "status": "pending",
+        "timestamp": firestore.SERVER_TIMESTAMP
+    })
+    return {"message": "Request submitted"}
+
+@app.get("/groups/{group_id}/add_requests")
+async def list_add_requests(group_id: str, request: Request):
+    """Allows the group owner to list all pending add-member requests."""
+    token = request.headers.get("Authorization", "").replace("Bearer ", "")
+    owner_uid = verify_token(token)
+    if not token or not owner_uid:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    group_ref = db.collection("groups").document(group_id)
+    group_doc = group_ref.get()
+    if not group_doc.exists:
+        raise HTTPException(status_code=404, detail="Group not found")
+    group_data = group_doc.to_dict()
+    if group_data["creator"] != owner_uid:
+        raise HTTPException(status_code=403, detail="Only the group owner can view requests")
+    add_requests_ref = group_ref.collection("add_requests")
+    requests = []
+    for req in add_requests_ref.where("status", "==", "pending").stream():
+        data = req.to_dict()
+        data["id"] = req.id
+        requests.append(data)
+    return {"requests": requests}
+
+@app.post("/groups/{group_id}/add_requests/{request_id}/respond")
+async def respond_add_request(group_id: str, request_id: str, response_data: dict, request: Request):
+    """Allows the group owner to accept or decline an add-member request."""
+    token = request.headers.get("Authorization", "").replace("Bearer ", "")
+    owner_uid = verify_token(token)
+    if not token or not owner_uid:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    group_ref = db.collection("groups").document(group_id)
+    group_doc = group_ref.get()
+    if not group_doc.exists:
+        raise HTTPException(status_code=404, detail="Group not found")
+    group_data = group_doc.to_dict()
+    if group_data["creator"] != owner_uid:
+        raise HTTPException(status_code=403, detail="Only the group owner can respond to requests")
+    add_requests_ref = group_ref.collection("add_requests")
+    req_doc = add_requests_ref.document(request_id).get()
+    if not req_doc.exists:
+        raise HTTPException(status_code=404, detail="Request not found")
+    req_data = req_doc.to_dict()
+    if req_data["status"] != "pending":
+        raise HTTPException(status_code=400, detail="Request already handled")
+    action = response_data.get("action")  # "accept" or "decline"
+    if action not in ["accept", "decline"]:
+        raise HTTPException(status_code=400, detail="Invalid action")
+    if action == "accept":
+        # Add member to group
+        current_members = group_data.get("members", [])
+        if req_data["new_member_uid"] not in current_members:
+            current_members.append(req_data["new_member_uid"])
+            group_ref.update({"members": current_members})
+            # Add group to user's group list
+            user_ref = db.collection("users").document(req_data["new_member_uid"])
+            user_doc = user_ref.get()
+            if user_doc.exists:
+                user_data = user_doc.to_dict()
+                user_groups = user_data.get("groups", [])
+                if group_id not in user_groups:
+                    user_groups.append(group_id)
+                    user_ref.update({"groups": user_groups})
+        add_requests_ref.document(request_id).update({"status": "accepted"})
+        # Optionally: notify user(s)
+        return {"message": "Member added to group"}
+    else:
+        add_requests_ref.document(request_id).update({"status": "declined"})
+        return {"message": "Request declined"}
