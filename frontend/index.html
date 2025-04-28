@@ -244,6 +244,36 @@
     </div>
   </div>
 </div>
+<!-- Request to Add Member Modal -->
+<div class="member-request-modal" id="member-request-modal" style="display:none;">
+  <div class="member-request-modal-content">
+    <h3>Request to Add Member</h3>
+    <div class="search-container">
+      <input type="text" id="request-member-search-input" placeholder="Search users by username...">
+      <div id="request-member-search-results" class="search-results"></div>
+    </div>
+    <div id="request-selected-member-display" style="display: none; margin-top: 10px;">
+      Selected: <span id="request-selected-member-name"></span>
+      <input type="hidden" id="request-selected-member-uid">
+    </div>
+    <div class="member-modal-buttons">
+      <button id="member-request-cancel">Cancel</button>
+      <button id="member-request-confirm">Send Request</button>
+    </div>
+  </div>
+</div>
+<!-- Review Add Requests Modal (for owner) -->
+<div class="review-requests-modal" id="review-requests-modal" style="display:none;">
+  <div class="review-requests-modal-content">
+    <h3>Pending Add Member Requests</h3>
+    <div id="pending-requests-list">
+      <!-- Requests will be loaded here -->
+    </div>
+    <div class="member-modal-buttons">
+      <button id="review-requests-close">Close</button>
+    </div>
+  </div>
+</div>
 <!-- Remove the separate profile picture modal since it's now part of the name change modal -->
 <div id="call-modal" class="call-modal" style="display: none;">
   <div class="call-container">
