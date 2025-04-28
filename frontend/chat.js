@@ -2024,7 +2024,7 @@ function showMemberModal(action) {
     const searchContainer = modal.querySelector(".search-container");
     const selectedDisplay = document.getElementById("selected-member-display");
     const membersContainer = document.getElementById("display-members-container");
-    
+    const user = getCurrentUser();
     // Reset modal state
     selectedMember = null;
     document.getElementById("member-search-input").value = "";
@@ -2032,13 +2032,12 @@ function showMemberModal(action) {
     selectedDisplay.style.display = "none";
     membersContainer.style.display = "none";
     searchContainer.style.display = "block";
-    
+
     if (action === 'add') {
         title.textContent = "Add Member";
         document.getElementById("member-modal-confirm").style.display = "block";
-        
-        // For private groups, show a message that only admins can add
-        if (currentGroupData && currentGroupData.is_private) {
+        // --- FIX: Only show lock for non-owners in private groups ---
+        if (currentGroupData && currentGroupData.is_private && user.uid !== currentGroupData.creator) {
             searchContainer.innerHTML = `
                 <div class="private-group-notice">
                     <i class="fas fa-lock"></i>
@@ -2047,12 +2046,11 @@ function showMemberModal(action) {
             `;
             document.getElementById("member-modal-confirm").style.display = "none";
         } else {
-            // Regular search input for public groups
+            // Real add member UI for owner or public group
             searchContainer.innerHTML = `
                 <input type="text" id="member-search-input" placeholder="Search users...">
                 <div id="member-search-results" class="search-results"></div>
             `;
-            
             // Re-attach the event listener since we recreated the input element
             const memberSearchInput = document.getElementById("member-search-input");
             if (memberSearchInput) {
@@ -2067,7 +2065,6 @@ function showMemberModal(action) {
         membersContainer.style.display = "block";
         displayCurrentMembersForKick();
     }
-    
     modal.style.display = "flex";
 }
 
@@ -2687,3 +2684,268 @@ async function uploadProfilePicture(file) {
         }
     }
 }
+
+// --- Private Group Member Request/Approval Logic ---
+
+// UI Elements for new modals
+const memberRequestModal = document.getElementById('member-request-modal');
+const memberRequestCancel = document.getElementById('member-request-cancel');
+const memberRequestConfirm = document.getElementById('member-request-confirm');
+const requestMemberSearchInput = document.getElementById('request-member-search-input');
+const requestMemberSearchResults = document.getElementById('request-member-search-results');
+const requestSelectedMemberDisplay = document.getElementById('request-selected-member-display');
+const requestSelectedMemberName = document.getElementById('request-selected-member-name');
+const requestSelectedMemberUid = document.getElementById('request-selected-member-uid');
+
+const reviewRequestsModal = document.getElementById('review-requests-modal');
+const reviewRequestsClose = document.getElementById('review-requests-close');
+const pendingRequestsList = document.getElementById('pending-requests-list');
+
+let pendingAddRequests = [];
+let selectedRequestUser = null;
+
+// Helper: Show/Hide modals
+function showModal(modal) { modal.style.display = 'flex'; }
+function hideModal(modal) { modal.style.display = 'none'; }
+
+// --- Add buttons to group menu dynamically ---
+function updateGroupMenuButtons(group) {
+  const user = getCurrentUser();
+  const addMemberBtn = document.getElementById('add-member-btn');
+  const kickMemberBtn = document.getElementById('kick-member-btn');
+  const displayMembersBtn = document.getElementById('display-members-btn');
+  const deleteGroupBtn = document.getElementById('delete-group-btn');
+  const groupMenu = document.querySelector('.group-chat-only');
+  // Remove any custom buttons first
+  let requestBtn = document.getElementById('request-add-member-btn');
+  if (requestBtn) requestBtn.remove();
+  let reviewBtn = document.getElementById('review-add-requests-btn');
+  if (reviewBtn) reviewBtn.remove();
+
+  // Only show for private groups
+  if (group.is_private) {
+    if (group.creator === user.uid) {
+      // OWNER: Show all admin options
+      addMemberBtn.style.display = 'block';
+      addMemberBtn.disabled = false;
+      kickMemberBtn.style.display = 'block';
+      kickMemberBtn.disabled = false;
+      displayMembersBtn.style.display = 'block';
+      displayMembersBtn.disabled = false;
+      deleteGroupBtn.style.display = 'block';
+      deleteGroupBtn.disabled = false;
+      // Add review requests button
+      const review = document.createElement('button');
+      review.id = 'review-add-requests-btn';
+      review.className = 'group-action-btn';
+      review.innerHTML = '<i class="fas fa-user-clock"></i> Review Add Requests';
+      review.onclick = () => openReviewRequestsModal(group.id);
+      groupMenu.insertBefore(review, displayMembersBtn);
+    } else {
+      // NON-OWNER: Only show request to add and view members
+      addMemberBtn.style.display = 'none';
+      kickMemberBtn.style.display = 'none';
+      deleteGroupBtn.style.display = 'none';
+      displayMembersBtn.style.display = 'block';
+      displayMembersBtn.disabled = false;
+      // Add request to add member button
+      const request = document.createElement('button');
+      request.id = 'request-add-member-btn';
+      request.className = 'group-action-btn';
+      request.innerHTML = '<i class="fas fa-user-plus"></i> Request to Add Member';
+      request.onclick = () => openMemberRequestModal(group.id);
+      groupMenu.insertBefore(request, displayMembersBtn);
+    }
+  } else {
+    // Public group: show add/kick/delete for owner only, view members for all
+    addMemberBtn.style.display = group.creator === user.uid ? 'block' : 'none';
+    addMemberBtn.disabled = group.creator === user.uid ? false : true;
+    kickMemberBtn.style.display = group.creator === user.uid ? 'block' : 'none';
+    kickMemberBtn.disabled = group.creator === user.uid ? false : true;
+    deleteGroupBtn.style.display = group.creator === user.uid ? 'block' : 'none';
+    deleteGroupBtn.disabled = group.creator === user.uid ? false : true;
+    displayMembersBtn.style.display = 'block';
+    displayMembersBtn.disabled = false;
+  }
+}
+
+// --- Open Request to Add Member Modal ---
+let currentRequestGroupId = null;
+function openMemberRequestModal(groupId) {
+  currentRequestGroupId = groupId;
+  requestMemberSearchInput.value = '';
+  requestMemberSearchResults.innerHTML = '';
+  requestSelectedMemberDisplay.style.display = 'none';
+  selectedRequestUser = null;
+  memberRequestConfirm.disabled = true;
+  showModal(memberRequestModal);
+  // Always re-attach the input event listener with debounce
+  requestMemberSearchInput.removeEventListener('input', requestMemberSearchInput._debouncedHandler || (()=>{}));
+  const debounced = debounce(handleRequestMemberSearch, 300);
+  requestMemberSearchInput.addEventListener('input', debounced);
+  requestMemberSearchInput._debouncedHandler = debounced;
+}
+
+async function handleRequestMemberSearch(e) {
+  const query = e.target.value.trim();
+  if (query.length < 2) {
+    requestMemberSearchResults.innerHTML = '';
+    memberRequestConfirm.disabled = true;
+    return;
+  }
+  // Search users by username
+  const user = getCurrentUser();
+  const res = await fetch(`${BACKEND_URL}/search_users?q=${encodeURIComponent(query)}`, {
+    headers: { Authorization: `Bearer ${user.token}` }
+  });
+  const data = await res.json();
+  requestMemberSearchResults.innerHTML = '';
+  let found = false;
+  data.users.forEach(u => {
+    // Don't show self or current group members
+    if (u.uid === user.uid || (currentGroupData && currentGroupData.members.includes(u.uid))) return;
+    found = true;
+    const div = document.createElement('div');
+    div.className = 'search-result-item';
+    // Avatar and info like add member modal
+    let avatarHTML;
+    if (u.profile_picture_url) {
+      avatarHTML = `<img src="${u.profile_picture_url}" alt="${u.name}" class="search-result-avatar-img">`;
+    } else {
+      const firstLetter = u.name?.charAt(0).toUpperCase() || "?";
+      const colors = ['#6e8efb', '#a777e3', '#4CAF50', '#FF5722', '#607D8B'];
+      const colorIndex = u.name?.length % colors.length || 0;
+      avatarHTML = `<div class="search-result-avatar-initials" style="background: ${colors[colorIndex]}">${firstLetter}</div>`;
+    }
+    div.innerHTML = `
+      <div class="search-result-avatar">${avatarHTML}</div>
+      <div class="search-result-info">
+        <div class="search-result-name">${u.name || "Unknown"}</div>
+        <div class="search-result-username">@${u.username || ""}</div>
+      </div>
+    `;
+    div.onclick = () => {
+      requestSelectedMemberDisplay.style.display = 'block';
+      requestSelectedMemberName.textContent = `${u.name || u.username} (@${u.username})`;
+      requestSelectedMemberUid.value = u.uid;
+      selectedRequestUser = u;
+      requestMemberSearchResults.innerHTML = '';
+      requestMemberSearchInput.value = '';
+      memberRequestConfirm.disabled = false;
+    };
+    requestMemberSearchResults.appendChild(div);
+  });
+  if (!found) {
+    requestMemberSearchResults.innerHTML = '<div class="no-results">No users found</div>';
+    memberRequestConfirm.disabled = true;
+  }
+}
+
+memberRequestCancel.onclick = () => {
+  hideModal(memberRequestModal);
+  requestMemberSearchInput.value = '';
+  requestMemberSearchResults.innerHTML = '';
+  requestSelectedMemberDisplay.style.display = 'none';
+  selectedRequestUser = null;
+  memberRequestConfirm.disabled = true;
+};
+
+memberRequestConfirm.onclick = async function() {
+  if (!selectedRequestUser || !currentRequestGroupId) return;
+  const user = getCurrentUser();
+  memberRequestConfirm.disabled = true;
+  // Call backend to submit request
+  const res = await fetch(`${BACKEND_URL}/groups/${currentRequestGroupId}/add_request`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${user.token}` },
+    body: JSON.stringify({ new_member_uid: selectedRequestUser.uid })
+  });
+  if (res.ok) {
+    alert('Request sent to group owner!');
+    hideModal(memberRequestModal);
+  } else {
+    const err = await res.json();
+    alert('Error: ' + (err.detail || 'Could not send request.'));
+  }
+  // Reset modal state
+  requestMemberSearchInput.value = '';
+  requestMemberSearchResults.innerHTML = '';
+  requestSelectedMemberDisplay.style.display = 'none';
+  selectedRequestUser = null;
+  memberRequestConfirm.disabled = true;
+};
+
+// --- Owner: Review Add Requests ---
+let currentReviewGroupId = null;
+async function openReviewRequestsModal(groupId) {
+  currentReviewGroupId = groupId;
+  await loadPendingAddRequests(groupId);
+  showModal(reviewRequestsModal);
+}
+
+reviewRequestsClose.onclick = () => hideModal(reviewRequestsModal);
+
+async function loadPendingAddRequests(groupId) {
+  const user = getCurrentUser();
+  const res = await fetch(`${BACKEND_URL}/groups/${groupId}/add_requests`, {
+    headers: { Authorization: `Bearer ${user.token}` }
+  });
+  const data = await res.json();
+  pendingAddRequests = data.requests || [];
+  renderPendingRequests();
+}
+
+async function renderPendingRequests() {
+  pendingRequestsList.innerHTML = '';
+  if (pendingAddRequests.length === 0) {
+    pendingRequestsList.innerHTML = '<div class="empty-state">No pending requests.</div>';
+    return;
+  }
+  for (const req of pendingAddRequests) {
+    // Fetch requester and new member details
+    const [requester, newMember] = await Promise.all([
+      fetchUserDetails(req.requester_uid),
+      fetchUserDetails(req.new_member_uid)
+    ]);
+    const div = document.createElement('div');
+    div.className = 'pending-request-item';
+    div.innerHTML = `<b>${requester.username}</b> requests to add <b>${newMember.username}</b> (${newMember.name})
+      <button class="accept-btn">Accept</button>
+      <button class="decline-btn">Decline</button>`;
+    div.querySelector('.accept-btn').onclick = () => respondToAddRequest(req.id, 'accept');
+    div.querySelector('.decline-btn').onclick = () => respondToAddRequest(req.id, 'decline');
+    pendingRequestsList.appendChild(div);
+  }
+}
+
+async function respondToAddRequest(requestId, action) {
+  const user = getCurrentUser();
+  const res = await fetch(`${BACKEND_URL}/groups/${currentReviewGroupId}/add_requests/${requestId}/respond`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${user.token}` },
+    body: JSON.stringify({ action })
+  });
+  if (res.ok) {
+    await loadPendingAddRequests(currentReviewGroupId);
+    await refreshCurrentGroup();
+  } else {
+    const err = await res.json();
+    alert('Error: ' + (err.detail || 'Could not process request.'));
+  }
+}
+
+async function fetchUserDetails(uid) {
+  const user = getCurrentUser();
+  const res = await fetch(`${BACKEND_URL}/user_details/${uid}`, {
+    headers: { Authorization: `Bearer ${user.token}` }
+  });
+  if (!res.ok) return { username: uid, name: '' };
+  return await res.json();
+}
+
+// --- Patch openGroupChat to update menu buttons ---
+const originalOpenGroupChat = openGroupChat;
+openGroupChat = async function(group) {
+  await originalOpenGroupChat(group);
+  updateGroupMenuButtons(group);
+};
