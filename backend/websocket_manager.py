@@ -25,16 +25,19 @@ class WebSocketManager:
                 del self.active_connections[uid]
         print(f"🔴 User {uid} disconnected. Remaining connections: {sum(len(v) for v in self.active_connections.values())}")
     
-    async def send_message(self, uid: str, text: str, sender_uid: str):
-        """Sends a private message to a specific user if they're online."""
+    async def send_message(self, uid: str, message_data: dict, sender_uid: str):
+        """Sends a message to a specific user if they're online."""
         if uid in self.active_connections:
             tasks = []
             for websocket in list(self.active_connections[uid]):
                 try:
                     tasks.append(websocket.send_json({
-                        "type": "message",
+                        "type": message_data.get("type", "message"),
                         "sender": sender_uid,
-                        "text": text,
+                        "text": message_data.get("text"),
+                        "file_url": message_data.get("file_url"),
+                        "file_type": message_data.get("file_type"),
+                        "file_size": message_data.get("file_size"),
                         "timestamp": None
                     }))
                 except Exception as e:
@@ -83,7 +86,7 @@ class WebSocketManager:
                 return True
         return False
 
-    async def send_group_message(self, group_id: str, sender_uid: str, text: str, members: List[str]):
+    async def send_group_message(self, group_id: str, sender_uid: str, message_data: dict, members: List[str]):
         """Sends a message to all online members of a group."""
         tasks = []
         for member_uid in members:
@@ -91,10 +94,13 @@ class WebSocketManager:
                 for websocket in list(self.active_connections[member_uid]):
                     try:
                         tasks.append(websocket.send_json({
-                            "type": "group_message",
+                            "type": message_data.get("type", "group_message"),
                             "group_id": group_id,
                             "sender": sender_uid,
-                            "text": text,
+                            "text": message_data.get("text"),
+                            "file_url": message_data.get("file_url"),
+                            "file_type": message_data.get("file_type"),
+                            "file_size": message_data.get("file_size"),
                             "timestamp": None
                         }))
                     except Exception as e:

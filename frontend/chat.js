@@ -2788,56 +2788,76 @@ function openMemberRequestModal(groupId) {
 
 async function handleRequestMemberSearch(e) {
   const query = e.target.value.trim();
+  requestMemberSearchResults.style.display = 'none';
+  requestMemberSearchResults.innerHTML = '';
+  
   if (query.length < 2) {
-    requestMemberSearchResults.innerHTML = '';
     memberRequestConfirm.disabled = true;
     return;
   }
-  // Search users by username
-  const user = getCurrentUser();
-  const res = await fetch(`${BACKEND_URL}/search_users?q=${encodeURIComponent(query)}`, {
-    headers: { Authorization: `Bearer ${user.token}` }
-  });
-  const data = await res.json();
-  requestMemberSearchResults.innerHTML = '';
-  let found = false;
-  data.users.forEach(u => {
-    // Don't show self or current group members
-    if (u.uid === user.uid || (currentGroupData && currentGroupData.members.includes(u.uid))) return;
-    found = true;
-    const div = document.createElement('div');
-    div.className = 'search-result-item';
-    // Avatar and info like add member modal
-    let avatarHTML;
-    if (u.profile_picture_url) {
-      avatarHTML = `<img src="${u.profile_picture_url}" alt="${u.name}" class="search-result-avatar-img">`;
-    } else {
-      const firstLetter = u.name?.charAt(0).toUpperCase() || "?";
-      const colors = ['#6e8efb', '#a777e3', '#4CAF50', '#FF5722', '#607D8B'];
-      const colorIndex = u.name?.length % colors.length || 0;
-      avatarHTML = `<div class="search-result-avatar-initials" style="background: ${colors[colorIndex]}">${firstLetter}</div>`;
+  
+  try {
+    const user = getCurrentUser();
+    const res = await fetch(`${BACKEND_URL}/search_users?q=${encodeURIComponent(query)}`, {
+      headers: { Authorization: `Bearer ${user.token}` }
+    });
+    
+    if (!res.ok) throw new Error(`Server error: ${res.statusText}`);
+    
+    const data = await res.json();
+    let found = false;
+    
+    data.users.forEach(u => {
+      // Don't show self or current group members
+      if (u.uid === user.uid || (currentGroupData && currentGroupData.members.includes(u.uid))) return;
+      
+      found = true;
+      const div = document.createElement('div');
+      div.className = 'search-result-item';
+      
+      // Avatar and info like add member modal
+      let avatarHTML;
+      if (u.profile_picture_url) {
+        avatarHTML = `<img src="${u.profile_picture_url}" alt="${u.name}" class="search-result-avatar-img">`;
+      } else {
+        const firstLetter = u.name?.charAt(0).toUpperCase() || "?";
+        const colors = ['#6e8efb', '#a777e3', '#4CAF50', '#FF5722', '#607D8B'];
+        const colorIndex = u.name?.length % colors.length || 0;
+        avatarHTML = `<div class="search-result-avatar-initials" style="background: ${colors[colorIndex]}">${firstLetter}</div>`;
+      }
+      
+      div.innerHTML = `
+        <div class="search-result-avatar">${avatarHTML}</div>
+        <div class="search-result-info">
+          <div class="search-result-name">${u.name || "Unknown"}</div>
+          <div class="search-result-username">@${u.username || ""}</div>
+        </div>
+      `;
+      
+      div.onclick = () => {
+        requestSelectedMemberDisplay.style.display = 'block';
+        requestSelectedMemberName.textContent = `${u.name || u.username} (@${u.username})`;
+        requestSelectedMemberUid.value = u.uid;
+        selectedRequestUser = u;
+        requestMemberSearchResults.style.display = 'none';
+        requestMemberSearchInput.value = '';
+        memberRequestConfirm.disabled = false;
+      };
+      
+      requestMemberSearchResults.appendChild(div);
+    });
+    
+    if (!found) {
+      requestMemberSearchResults.innerHTML = '<div class="no-results">No users found</div>';
     }
-    div.innerHTML = `
-      <div class="search-result-avatar">${avatarHTML}</div>
-      <div class="search-result-info">
-        <div class="search-result-name">${u.name || "Unknown"}</div>
-        <div class="search-result-username">@${u.username || ""}</div>
-      </div>
-    `;
-    div.onclick = () => {
-      requestSelectedMemberDisplay.style.display = 'block';
-      requestSelectedMemberName.textContent = `${u.name || u.username} (@${u.username})`;
-      requestSelectedMemberUid.value = u.uid;
-      selectedRequestUser = u;
-      requestMemberSearchResults.innerHTML = '';
-      requestMemberSearchInput.value = '';
-      memberRequestConfirm.disabled = false;
-    };
-    requestMemberSearchResults.appendChild(div);
-  });
-  if (!found) {
-    requestMemberSearchResults.innerHTML = '<div class="no-results">No users found</div>';
-    memberRequestConfirm.disabled = true;
+    
+    // Always show the results container if we have query
+    requestMemberSearchResults.style.display = 'block';
+    
+  } catch (error) {
+    console.error('Failed to search users:', error);
+    requestMemberSearchResults.innerHTML = '<div class="no-results">Error searching users</div>';
+    requestMemberSearchResults.style.display = 'block';
   }
 }
 
@@ -2949,3 +2969,218 @@ openGroupChat = async function(group) {
   await originalOpenGroupChat(group);
   updateGroupMenuButtons(group);
 };
+
+// Add this after the memberRequestModal declaration
+document.addEventListener('click', (e) => {
+  // Close search results if clicking outside
+  if (!requestMemberSearchResults.contains(e.target) && 
+      !requestMemberSearchInput.contains(e.target)) {
+    requestMemberSearchResults.style.display = 'none';
+  }
+});
+
+// Add this after the message input container HTML
+const messageInputContainer = document.querySelector('.message-input-container');
+messageInputContainer.innerHTML = `
+  <div class="attachment-container">
+    <button id="attachment-btn" class="attachment-btn">
+      <i class="fas fa-plus"></i>
+    </button>
+    <div class="attachment-menu">
+      <div class="attachment-option" data-type="image">
+        <i class="fas fa-image"></i>
+        <span>Image</span>
+      </div>
+      <div class="attachment-option" data-type="video">
+        <i class="fas fa-video"></i>
+        <span>Video</span>
+      </div>
+      <div class="attachment-option" data-type="file">
+        <i class="fas fa-file"></i>
+        <span>File</span>
+      </div>
+    </div>
+  </div>
+  <input type="text" id="message-input" placeholder="Type a message...">
+  <button id="send-btn"></button>
+`;
+
+// Add hidden file inputs for each type
+const fileInputsHTML = `
+  <input type="file" id="image-upload" accept="image/*" style="display: none;">
+  <input type="file" id="video-upload" accept="video/*" style="display: none;">
+  <input type="file" id="file-upload" style="display: none;">
+`;
+document.body.insertAdjacentHTML('beforeend', fileInputsHTML);
+
+// Setup attachment button functionality
+const attachmentBtn = document.getElementById('attachment-btn');
+const attachmentMenu = document.querySelector('.attachment-menu');
+const imageUpload = document.getElementById('image-upload');
+const videoUpload = document.getElementById('video-upload');
+const fileUpload = document.getElementById('file-upload');
+
+// Toggle attachment menu
+attachmentBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  attachmentMenu.classList.toggle('show');
+});
+
+// Close attachment menu when clicking outside
+document.addEventListener('click', () => {
+  attachmentMenu.classList.remove('show');
+});
+
+// Handle attachment option clicks
+document.querySelectorAll('.attachment-option').forEach(option => {
+  option.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const type = option.dataset.type;
+    switch(type) {
+      case 'image':
+        imageUpload.click();
+        break;
+      case 'video':
+        videoUpload.click();
+        break;
+      case 'file':
+        fileUpload.click();
+        break;
+    }
+    attachmentMenu.classList.remove('show');
+  });
+});
+
+// Handle file selection
+async function handleFileUpload(file, type) {
+  try {
+    const user = getCurrentUser();
+    if (!user?.token) throw new Error("User not authenticated");
+
+    // Create FormData
+    const formData = new FormData();
+    formData.append('file', file);
+
+    // Upload file
+    const response = await fetch(`${BACKEND_URL}/upload`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${user.token}`
+      },
+      body: formData
+    });
+
+    if (!response.ok) throw new Error('Upload failed');
+
+    const data = await response.json();
+    
+    // Send message with file
+    const messageData = {
+      type: type,
+      text: file.name,
+      file_url: data.file_url,
+      file_type: file.type,
+      file_size: file.size
+    };
+
+    if (currentChatUID) {
+      // Private chat
+      ws.send(JSON.stringify({
+        type: 'message',
+        ...messageData,
+        sender: user.uid,
+        receiver: currentChatUID
+      }));
+    } else if (currentGroupId) {
+      // Group chat
+      ws.send(JSON.stringify({
+        type: 'group_message',
+        ...messageData,
+        sender: user.uid,
+        group_id: currentGroupId
+      }));
+    }
+
+  } catch (error) {
+    console.error('File upload failed:', error);
+    alert('Failed to upload file. Please try again.');
+  }
+}
+
+// Add file upload event listeners
+imageUpload.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (file) handleFileUpload(file, 'image');
+  e.target.value = ''; // Reset input
+});
+
+videoUpload.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (file) handleFileUpload(file, 'video');
+  e.target.value = ''; // Reset input
+});
+
+fileUpload.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (file) handleFileUpload(file, 'file');
+  e.target.value = ''; // Reset input
+});
+
+// Update message rendering to handle files
+function renderMessage(message) {
+  const messageDiv = document.createElement("div");
+  const currentUser = getCurrentUser();
+  const isSentByMe = message.sender === currentUser?.uid;
+  
+  messageDiv.classList.add("message", isSentByMe ? "sent" : "received");
+  
+  let content = '';
+  
+  switch(message.type) {
+    case 'image':
+      content = `
+        <div class="message-file image">
+          <img src="${message.file_url}" alt="${message.text}" loading="lazy">
+          <div class="file-name">${message.text}</div>
+        </div>`;
+      break;
+    case 'video':
+      content = `
+        <div class="message-file video">
+          <video controls>
+            <source src="${message.file_url}" type="${message.file_type}">
+            Your browser does not support the video tag.
+          </video>
+          <div class="file-name">${message.text}</div>
+        </div>`;
+      break;
+    case 'file':
+      content = `
+        <div class="message-file document">
+          <i class="fas fa-file"></i>
+          <div class="file-info">
+            <div class="file-name">${message.text}</div>
+            <div class="file-size">${formatFileSize(message.file_size)}</div>
+          </div>
+          <a href="${message.file_url}" target="_blank" class="download-btn">
+            <i class="fas fa-download"></i>
+          </a>
+        </div>`;
+      break;
+    default:
+      content = `<div>${message.text}</div>`;
+  }
+  
+  messageDiv.innerHTML = content;
+  messagesContainer.appendChild(messageDiv);
+  messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+// Helper function to format file size
+function formatFileSize(bytes) {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}

@@ -200,25 +200,38 @@ async def websocket_endpoint(websocket: WebSocket):
             if message_type == "message":
                 receiver_uid = data.get("receiver")
                 text = data.get("text")
-                timestamp = data.get("timestamp")
+                file_url = data.get("file_url")
+                file_type = data.get("file_type")
+                file_size = data.get("file_size")
 
                 if not receiver_uid or not text:
                     continue
 
-                # Encrypt message text
-                encrypted_text = encrypt_message(text)
-
-                # Store message in Firestore
+                # Create message data
                 message_data = {
                     "sender": sender_uid,
                     "receiver": receiver_uid,
-                    "message": encrypted_text,
-                    "timestamp": firestore.SERVER_TIMESTAMP
+                    "timestamp": firestore.SERVER_TIMESTAMP,
+                    "type": data.get("type", "text"),
+                    "text": text
                 }
+
+                # Add file data if present
+                if file_url:
+                    message_data.update({
+                        "file_url": file_url,
+                        "file_type": file_type,
+                        "file_size": file_size
+                    })
+
+                # Encrypt message text
+                message_data["message"] = encrypt_message(text)
+
+                # Store in Firestore
                 db.collection("messages").add(message_data)
 
                 # Send to receiver if online
-                await websocket_manager.send_message(receiver_uid, text, sender_uid)
+                await websocket_manager.send_message(receiver_uid, data, sender_uid)
 
             elif message_type == "typing":
                 receiver_uid = data.get("receiver")
@@ -230,6 +243,9 @@ async def websocket_endpoint(websocket: WebSocket):
             if message_type == "group_message":
                 group_id = data.get("group_id")
                 text = data.get("text")
+                file_url = data.get("file_url")
+                file_type = data.get("file_type")
+                file_size = data.get("file_size")
                 
                 if not group_id or not text:
                     continue
@@ -243,20 +259,34 @@ async def websocket_endpoint(websocket: WebSocket):
                 if sender_uid not in group_data.get("members", []):
                     continue
                 
-                # Encrypt and store message
-                encrypted_text = encrypt_message(text)
-                db.collection("group_messages").add({
+                # Create message data
+                message_data = {
                     "group_id": group_id,
                     "sender": sender_uid,
-                    "message": encrypted_text,
-                    "timestamp": firestore.SERVER_TIMESTAMP
-                })
+                    "timestamp": firestore.SERVER_TIMESTAMP,
+                    "type": data.get("type", "text"),
+                    "text": text
+                }
+
+                # Add file data if present
+                if file_url:
+                    message_data.update({
+                        "file_url": file_url,
+                        "file_type": file_type,
+                        "file_size": file_size
+                    })
+
+                # Encrypt message text
+                message_data["message"] = encrypt_message(text)
+                
+                # Store in Firestore
+                db.collection("group_messages").add(message_data)
                 
                 # Send to group members
                 await websocket_manager.send_group_message(
                     group_id=group_id,
                     sender_uid=sender_uid,
-                    text=text,
+                    message_data=data,
                     members=group_data.get("members", [])
                 )
 
@@ -852,27 +882,80 @@ async def upload_file(
             raise HTTPException(status_code=401, detail="Authorization header missing")
 
         token = authorization.replace("Bearer ", "")
-        decoded_token = auth.verify_id_token(token)
-        uid = decoded_token["uid"]
+        uid = verify_token(token)
+        if not uid:
+            raise HTTPException(status_code=401, detail="Invalid token")
 
-        file_bytes = await file.read()
+        # Check file size
+        file_size = 0
+        file_content = bytearray()
+        
+        while chunk := await file.read(8192):
+            file_size += len(chunk)
+            file_content.extend(chunk)
+            
+            if file_size > MAX_FILE_SIZE:
+                raise HTTPException(status_code=413, detail="File too large")
 
-        upload_result = cloudinary.uploader.upload(file_bytes, public_id=file.filename)
-        file_url = upload_result["secure_url"]
+        # Check file type
+        content_type = file.content_type
+        if content_type.startswith('image/'):
+            if content_type not in ALLOWED_IMAGE_TYPES:
+                raise HTTPException(status_code=415, detail="Unsupported image type")
+        elif content_type.startswith('video/'):
+            if content_type not in ALLOWED_VIDEO_TYPES:
+                raise HTTPException(status_code=415, detail="Unsupported video type")
 
-        # Sauvegarde dans Firestore avec l'UID
-        from firebase_admin import firestore
-        db = firestore.client()
+        # Generate unique filename
+        file_ext = os.path.splitext(file.filename)[1]
+        unique_filename = f"{uid}_{uuid.uuid4()}{file_ext}"
+
+        # Upload to Cloudinary with optimizations
+        upload_options = {
+            "resource_type": "auto",
+            "folder": f"chat_files/{uid}",
+            "public_id": unique_filename
+        }
+
+        if content_type.startswith('image/'):
+            upload_options.update({
+                "eager": [
+                    {"width": 800, "height": 800, "crop": "limit"},
+                    {"width": 400, "height": 400, "crop": "limit"}
+                ],
+                "eager_async": True
+            })
+        elif content_type.startswith('video/'):
+            upload_options.update({
+                "resource_type": "video",
+                "eager": [
+                    {"width": 640, "height": 480, "crop": "limit"}
+                ],
+                "eager_async": True
+            })
+
+        # Upload file
+        upload_result = cloudinary.uploader.upload(file_content, **upload_options)
+
+        # Store file info in Firestore
         db.collection("uploads").add({
             "uid": uid,
             "filename": file.filename,
-            "file_url": file_url,
-            "timestamp": datetime.utcnow()
+            "file_url": upload_result["secure_url"],
+            "file_type": content_type,
+            "file_size": file_size,
+            "timestamp": firestore.SERVER_TIMESTAMP
         })
 
-        return {"file_url": file_url, "uid": uid}
+        return {
+            "file_url": upload_result["secure_url"],
+            "file_type": content_type,
+            "file_size": file_size
+        }
+
     except Exception as e:
-        return {"error": str(e)}
+        print(f"Upload error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 
