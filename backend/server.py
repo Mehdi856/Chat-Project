@@ -871,7 +871,24 @@ async def search_users(q: str, request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-#upload
+# File upload constants
+MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB limit
+ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp"}
+ALLOWED_VIDEO_TYPES = {"video/mp4", "video/webm", "video/quicktime"}
+ALLOWED_FILE_TYPES = {
+    *ALLOWED_IMAGE_TYPES,
+    *ALLOWED_VIDEO_TYPES,
+    "application/pdf",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "text/plain",
+    "application/zip",
+    "application/x-rar-compressed"
+}
+
+# Update the file upload endpoint
 @app.post("/upload")
 async def upload_file(
     file: UploadFile = File(...),
@@ -890,69 +907,90 @@ async def upload_file(
         file_size = 0
         file_content = bytearray()
         
+        # Read file in chunks
         while chunk := await file.read(8192):
             file_size += len(chunk)
-            file_content.extend(chunk)
-            
             if file_size > MAX_FILE_SIZE:
-                raise HTTPException(status_code=413, detail="File too large")
+                raise HTTPException(
+                    status_code=413,
+                    detail=f"File too large. Maximum size is {MAX_FILE_SIZE / (1024 * 1024)}MB"
+                )
+            file_content.extend(chunk)
 
         # Check file type
         content_type = file.content_type
-        if content_type.startswith('image/'):
-            if content_type not in ALLOWED_IMAGE_TYPES:
-                raise HTTPException(status_code=415, detail="Unsupported image type")
-        elif content_type.startswith('video/'):
-            if content_type not in ALLOWED_VIDEO_TYPES:
-                raise HTTPException(status_code=415, detail="Unsupported video type")
+        if content_type not in ALLOWED_FILE_TYPES:
+            raise HTTPException(
+                status_code=415,
+                detail=f"Unsupported file type: {content_type}"
+            )
 
         # Generate unique filename
-        file_ext = os.path.splitext(file.filename)[1]
+        file_ext = os.path.splitext(file.filename)[1].lower()
         unique_filename = f"{uid}_{uuid.uuid4()}{file_ext}"
 
-        # Upload to Cloudinary with optimizations
-        upload_options = {
-            "resource_type": "auto",
-            "folder": f"chat_files/{uid}",
-            "public_id": unique_filename
-        }
+        try:
+            # Upload to Cloudinary with optimizations
+            upload_options = {
+                "resource_type": "auto",
+                "folder": f"chat_files/{uid}",
+                "public_id": os.path.splitext(unique_filename)[0],  # Remove extension as Cloudinary adds it
+                "overwrite": True
+            }
 
-        if content_type.startswith('image/'):
-            upload_options.update({
-                "eager": [
-                    {"width": 800, "height": 800, "crop": "limit"},
-                    {"width": 400, "height": 400, "crop": "limit"}
-                ],
-                "eager_async": True
+            # Add specific optimizations based on file type
+            if content_type.startswith('image/'):
+                upload_options.update({
+                    "eager": [
+                        {"width": 800, "height": 800, "crop": "limit", "quality": "auto"},
+                        {"width": 400, "height": 400, "crop": "limit", "quality": "auto"}
+                    ],
+                    "eager_async": True
+                })
+            elif content_type.startswith('video/'):
+                upload_options.update({
+                    "resource_type": "video",
+                    "eager": [
+                        {"width": 640, "height": 480, "crop": "limit", "quality": "auto"}
+                    ],
+                    "eager_async": True
+                })
+
+            # Upload file
+            upload_result = cloudinary.uploader.upload(file_content, **upload_options)
+
+            if not upload_result or "secure_url" not in upload_result:
+                raise HTTPException(
+                    status_code=500,
+                    detail="Failed to upload file to storage"
+                )
+
+            # Store file info in Firestore
+            db.collection("uploads").add({
+                "uid": uid,
+                "filename": file.filename,
+                "file_url": upload_result["secure_url"],
+                "file_type": content_type,
+                "file_size": file_size,
+                "timestamp": firestore.SERVER_TIMESTAMP
             })
-        elif content_type.startswith('video/'):
-            upload_options.update({
-                "resource_type": "video",
-                "eager": [
-                    {"width": 640, "height": 480, "crop": "limit"}
-                ],
-                "eager_async": True
-            })
 
-        # Upload file
-        upload_result = cloudinary.uploader.upload(file_content, **upload_options)
+            return {
+                "success": True,
+                "file_url": upload_result["secure_url"],
+                "file_type": content_type,
+                "file_size": file_size
+            }
 
-        # Store file info in Firestore
-        db.collection("uploads").add({
-            "uid": uid,
-            "filename": file.filename,
-            "file_url": upload_result["secure_url"],
-            "file_type": content_type,
-            "file_size": file_size,
-            "timestamp": firestore.SERVER_TIMESTAMP
-        })
+        except Exception as upload_error:
+            print(f"Cloudinary upload error: {str(upload_error)}")
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to upload file to storage service"
+            )
 
-        return {
-            "file_url": upload_result["secure_url"],
-            "file_type": content_type,
-            "file_size": file_size
-        }
-
+    except HTTPException as http_error:
+        raise http_error
     except Exception as e:
         print(f"Upload error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))

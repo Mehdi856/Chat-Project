@@ -417,15 +417,74 @@ function groupMessagesByDate(messages) {
     return groups;
 }
 
+// Update the existing renderMessage function
 function renderMessage(message) {
     const messageDiv = document.createElement("div");
-    messageDiv.classList.add("message", message.sender === getCurrentUser().uid ? "sent" : "received");
+    const currentUser = getCurrentUser();
+    const isSentByMe = message.sender === currentUser?.uid;
     
+    messageDiv.classList.add("message", isSentByMe ? "sent" : "received");
     
+    let content = '';
     
-    messageDiv.textContent = message.text;
+    // Handle different message types
+    switch(message.type) {
+        case 'image':
+            content = `
+                <div class="message-file image">
+                    <img src="${message.file_url}" alt="${message.text}" loading="lazy">
+                    <div class="file-name">${message.text}</div>
+                </div>`;
+            break;
+        case 'video':
+            content = `
+                <div class="message-file video">
+                    <video controls>
+                        <source src="${message.file_url}" type="${message.file_type}">
+                        Your browser does not support the video tag.
+                    </video>
+                    <div class="file-name">${message.text}</div>
+                </div>`;
+            break;
+        case 'file':
+            content = `
+                <div class="message-file document">
+                    <i class="fas fa-file"></i>
+                    <div class="file-info">
+                        <div class="file-name">${message.text}</div>
+                        <div class="file-size">${formatFileSize(message.file_size)}</div>
+                    </div>
+                    <a href="${message.file_url}" target="_blank" class="download-btn">
+                        <i class="fas fa-download"></i>
+                    </a>
+                </div>`;
+            break;
+        default:
+            // Regular text message
+            if (currentGroupId) {
+                // Group message with sender name
+                const senderName = message.sender_name || "Member";
+                content = `
+                    <small class="group-sender-name">${isSentByMe ? "You" : senderName}</small>
+                    <div>${message.text}</div>`;
+            } else {
+                // Private message
+                content = `<div>${message.text}</div>`;
+            }
+    }
     
+    messageDiv.innerHTML = content;
     messagesContainer.appendChild(messageDiv);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+// Helper function to format file size
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
 async function fetchPendingContactRequests() {
@@ -3053,134 +3112,137 @@ document.querySelectorAll('.attachment-option').forEach(option => {
 
 // Handle file selection
 async function handleFileUpload(file, type) {
-  try {
-    const user = getCurrentUser();
-    if (!user?.token) throw new Error("User not authenticated");
+    try {
+        const user = getCurrentUser();
+        if (!user?.token) throw new Error("User not authenticated");
 
-    // Create FormData
-    const formData = new FormData();
-    formData.append('file', file);
+        // Show upload progress indicator
+        const progressDiv = document.createElement('div');
+        progressDiv.className = 'upload-progress';
+        progressDiv.innerHTML = `
+            <div class="upload-progress-inner">
+                <i class="fas fa-upload"></i>
+                <span>Uploading ${file.name}...</span>
+            </div>
+        `;
+        messagesContainer.appendChild(progressDiv);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
 
-    // Upload file
-    const response = await fetch(`${BACKEND_URL}/upload`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${user.token}`
-      },
-      body: formData
-    });
+        // Create FormData
+        const formData = new FormData();
+        formData.append('file', file);
 
-    if (!response.ok) throw new Error('Upload failed');
+        try {
+            // Upload file
+            const response = await fetch(`${BACKEND_URL}/upload`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${user.token}`
+                },
+                body: formData
+            });
 
-    const data = await response.json();
-    
-    // Send message with file
-    const messageData = {
-      type: type,
-      text: file.name,
-      file_url: data.file_url,
-      file_type: file.type,
-      file_size: file.size
-    };
+            // Remove progress indicator
+            progressDiv.remove();
 
-    if (currentChatUID) {
-      // Private chat
-      ws.send(JSON.stringify({
-        type: 'message',
-        ...messageData,
-        sender: user.uid,
-        receiver: currentChatUID
-      }));
-    } else if (currentGroupId) {
-      // Group chat
-      ws.send(JSON.stringify({
-        type: 'group_message',
-        ...messageData,
-        sender: user.uid,
-        group_id: currentGroupId
-      }));
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || 'Upload failed');
+            }
+
+            const data = await response.json();
+            if (!data.success || !data.file_url) {
+                throw new Error('Invalid response from server');
+            }
+            
+            // Send message with file
+            const messageData = {
+                type: type,
+                text: file.name,
+                file_url: data.file_url,
+                file_type: data.file_type,
+                file_size: data.file_size
+            };
+
+            if (currentChatUID) {
+                // Private chat
+                ws.send(JSON.stringify({
+                    type: 'message',
+                    ...messageData,
+                    sender: user.uid,
+                    receiver: currentChatUID
+                }));
+            } else if (currentGroupId) {
+                // Group chat
+                ws.send(JSON.stringify({
+                    type: 'group_message',
+                    ...messageData,
+                    sender: user.uid,
+                    group_id: currentGroupId
+                }));
+            }
+
+        } catch (error) {
+            // Remove progress indicator if still present
+            if (progressDiv.parentNode) {
+                progressDiv.remove();
+            }
+            
+            // Show error message
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'message-error';
+            errorDiv.textContent = error.message || 'Failed to upload file';
+            messagesContainer.appendChild(errorDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            
+            // Auto-remove error message after 5 seconds
+            setTimeout(() => {
+                if (errorDiv.parentNode) {
+                    errorDiv.remove();
+                }
+            }, 5000);
+            
+            throw error;
+        }
+
+    } catch (error) {
+        console.error('File upload failed:', error);
+        alert(error.message || 'Failed to upload file. Please try again.');
     }
-
-  } catch (error) {
-    console.error('File upload failed:', error);
-    alert('Failed to upload file. Please try again.');
-  }
 }
 
-// Add file upload event listeners
-imageUpload.addEventListener('change', (e) => {
-  const file = e.target.files[0];
-  if (file) handleFileUpload(file, 'image');
-  e.target.value = ''; // Reset input
-});
-
-videoUpload.addEventListener('change', (e) => {
-  const file = e.target.files[0];
-  if (file) handleFileUpload(file, 'video');
-  e.target.value = ''; // Reset input
-});
-
-fileUpload.addEventListener('change', (e) => {
-  const file = e.target.files[0];
-  if (file) handleFileUpload(file, 'file');
-  e.target.value = ''; // Reset input
-});
-
-// Update message rendering to handle files
-function renderMessage(message) {
-  const messageDiv = document.createElement("div");
-  const currentUser = getCurrentUser();
-  const isSentByMe = message.sender === currentUser?.uid;
-  
-  messageDiv.classList.add("message", isSentByMe ? "sent" : "received");
-  
-  let content = '';
-  
-  switch(message.type) {
-    case 'image':
-      content = `
-        <div class="message-file image">
-          <img src="${message.file_url}" alt="${message.text}" loading="lazy">
-          <div class="file-name">${message.text}</div>
-        </div>`;
-      break;
-    case 'video':
-      content = `
-        <div class="message-file video">
-          <video controls>
-            <source src="${message.file_url}" type="${message.file_type}">
-            Your browser does not support the video tag.
-          </video>
-          <div class="file-name">${message.text}</div>
-        </div>`;
-      break;
-    case 'file':
-      content = `
-        <div class="message-file document">
-          <i class="fas fa-file"></i>
-          <div class="file-info">
-            <div class="file-name">${message.text}</div>
-            <div class="file-size">${formatFileSize(message.file_size)}</div>
-          </div>
-          <a href="${message.file_url}" target="_blank" class="download-btn">
-            <i class="fas fa-download"></i>
-          </a>
-        </div>`;
-      break;
-    default:
-      content = `<div>${message.text}</div>`;
-  }
-  
-  messageDiv.innerHTML = content;
-  messagesContainer.appendChild(messageDiv);
-  messagesContainer.scrollTop = messagesContainer.scrollHeight;
-}
-
-// Helper function to format file size
-function formatFileSize(bytes) {
-  if (bytes === 0) return '0 Bytes';
-  const k = 1024;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-}
+// Add CSS for upload progress and error messages
+const style = document.createElement('style');
+style.textContent = `
+    .upload-progress {
+        padding: 10px;
+        margin: 10px;
+        background: rgba(46, 87, 223, 0.1);
+        border-radius: 8px;
+        text-align: center;
+    }
+    
+    .upload-progress-inner {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        color: #2e57df;
+    }
+    
+    .message-error {
+        padding: 10px;
+        margin: 10px;
+        background: rgba(255, 0, 0, 0.1);
+        color: #ff3333;
+        border-radius: 8px;
+        text-align: center;
+        animation: fadeIn 0.3s ease-in;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+`;
+document.head.appendChild(style);
