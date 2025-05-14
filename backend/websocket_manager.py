@@ -31,15 +31,23 @@ class WebSocketManager:
             tasks = []
             for websocket in list(self.active_connections[uid]):
                 try:
-                    tasks.append(websocket.send_json({
+                    # Create message with all data
+                    message = {
                         "type": message_data.get("type", "message"),
                         "sender": sender_uid,
                         "text": message_data.get("text"),
-                        "file_url": message_data.get("file_url"),
-                        "file_type": message_data.get("file_type"),
-                        "file_size": message_data.get("file_size"),
                         "timestamp": None
-                    }))
+                    }
+
+                    # Add file data if present
+                    if message_data.get("file_url"):
+                        message.update({
+                            "file_url": message_data.get("file_url"),
+                            "file_type": message_data.get("file_type"),
+                            "file_size": message_data.get("file_size")
+                        })
+
+                    tasks.append(websocket.send_json(message))
                 except Exception as e:
                     print(f"❌ Error sending message to {uid}: {e}")
                     await self.disconnect(uid, websocket)
@@ -93,16 +101,24 @@ class WebSocketManager:
             if member_uid != sender_uid and member_uid in self.active_connections:
                 for websocket in list(self.active_connections[member_uid]):
                     try:
-                        tasks.append(websocket.send_json({
+                        # Create message with all data
+                        message = {
                             "type": message_data.get("type", "group_message"),
                             "group_id": group_id,
                             "sender": sender_uid,
                             "text": message_data.get("text"),
-                            "file_url": message_data.get("file_url"),
-                            "file_type": message_data.get("file_type"),
-                            "file_size": message_data.get("file_size"),
                             "timestamp": None
-                        }))
+                        }
+
+                        # Add file data if present
+                        if message_data.get("file_url"):
+                            message.update({
+                                "file_url": message_data.get("file_url"),
+                                "file_type": message_data.get("file_type"),
+                                "file_size": message_data.get("file_size")
+                            })
+
+                        tasks.append(websocket.send_json(message))
                     except Exception as e:
                         print(f"❌ Error sending group message to {member_uid}: {e}")
                         await self.disconnect(member_uid, websocket)

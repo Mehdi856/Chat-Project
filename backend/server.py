@@ -191,11 +191,8 @@ async def websocket_endpoint(websocket: WebSocket):
         await websocket_manager.connect(websocket, sender_uid)
 
         while True:
-            
-            # 🔹 Receive & parse message
             data = await websocket.receive_json()
             message_type = data.get("type", "message")
-            
             
             if message_type == "message":
                 receiver_uid = data.get("receiver")

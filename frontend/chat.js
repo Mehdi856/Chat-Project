@@ -1355,31 +1355,29 @@ async function sendMessage() {
             // Private message
             const message = {
                 type: "message",
-                text,
+                text: text,
                 sender: user.uid,
                 receiver: currentChatUID,
                 timestamp: new Date().toISOString()
             };
 
-            ws.send(JSON.stringify({ 
-                ...message 
-            }));
+            // Send via WebSocket
+            ws.send(JSON.stringify(message));
 
             // Handle the sent message locally
             handleNewMessage(message);
         } else if (currentGroupId) {
             // Group message
             const message = {
-                type:"group_message",
-                text,
+                type: "group_message",
+                text: text,
                 sender: user.uid,
                 group_id: currentGroupId,
                 timestamp: new Date().toISOString()
             };
 
-            ws.send(JSON.stringify({  
-                ...message 
-            }));
+            // Send via WebSocket
+            ws.send(JSON.stringify(message));
 
             // Handle the sent message locally
             handleNewGroupMessage(message);
@@ -3155,31 +3153,37 @@ async function handleFileUpload(file, type) {
                 throw new Error('Invalid response from server');
             }
             
-            // Send message with file
+            // Create message with file
             const messageData = {
                 type: type,
                 text: file.name,
                 file_url: data.file_url,
                 file_type: data.file_type,
-                file_size: data.file_size
+                file_size: data.file_size,
+                sender: user.uid,
+                timestamp: new Date().toISOString()
             };
 
             if (currentChatUID) {
                 // Private chat
-                ws.send(JSON.stringify({
-                    type: 'message',
-                    ...messageData,
-                    sender: user.uid,
-                    receiver: currentChatUID
-                }));
+                messageData.type = "message";
+                messageData.receiver = currentChatUID;
+                
+                // Send via WebSocket
+                ws.send(JSON.stringify(messageData));
+                
+                // Handle locally
+                handleNewMessage(messageData);
             } else if (currentGroupId) {
                 // Group chat
-                ws.send(JSON.stringify({
-                    type: 'group_message',
-                    ...messageData,
-                    sender: user.uid,
-                    group_id: currentGroupId
-                }));
+                messageData.type = "group_message";
+                messageData.group_id = currentGroupId;
+                
+                // Send via WebSocket
+                ws.send(JSON.stringify(messageData));
+                
+                // Handle locally
+                handleNewGroupMessage(messageData);
             }
 
         } catch (error) {
