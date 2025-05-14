@@ -39,7 +39,7 @@ body {
 }
 
 .sign-in-container, .sign-up-container {
-  padding: 30px 100px; /* Reduced top padding from 100px */
+  padding: 20px 100px; /* Reduced top padding from 30px to 20px */
   z-index: 2;
 }
 
@@ -59,7 +59,7 @@ body {
 }
 
 h1 {
-  margin-bottom: 1px;
+  margin-bottom: 0px; /* Reduced from 1px */
   font-weight: 700;
   font-size: 28px;
 }
@@ -67,12 +67,12 @@ h1 {
 p {
   font-size: 15px;
   line-height: 1.6;
-  margin-bottom: 30px;
+  margin-bottom: 25px; /* Reduced from 30px */
   opacity: 0.95;
 }
 
 .social-container {
-  margin: 20px 0;
+  margin: 15px 0; /* Reduced from 20px 0 */
 }
 
 .social-container a {
@@ -99,13 +99,13 @@ p {
 .input-container {
   position: relative;
   width: 100%;
-  margin: 10px 0;
+  margin: 8px 0; /* Reduced from 10px 0 */
 }
 
 input {
   background-color: #f7f7f7;
   border: none;
-  padding: 15px;
+  padding: 13px; /* Reduced from 15px */
   width: 100%;
   border-radius: 10px;
   font-size: 14px;
@@ -138,12 +138,12 @@ button {
   color: white;
   font-size: 14px;
   font-weight: 600;
-  padding: 14px 45px;
+  padding: 12px 40px; /* Slightly smaller button */
   letter-spacing: 1px;
   text-transform: uppercase;
   transition: all 0.3s ease;
   cursor: pointer;
-  margin-top: 20px;
+  margin-top: 12px; /* Reduced from 15px */
   box-shadow: 0 4px 15px rgba(110, 142, 251, 0.4);
 }
 
@@ -180,6 +180,7 @@ form {
   max-width: 320px;
   position: relative;
   height: 100%;
+  padding-top: 10px; /* Added padding to push content down a bit */
 }
 
 .forgot-password {
@@ -199,7 +200,7 @@ form {
 .divider {
   display: flex;
   align-items: center;
-  margin: 20px 0;
+  margin: 15px 0; /* Reduced from 20px 0 */
   width: 100%;
 }
 
@@ -217,7 +218,7 @@ form {
 
 .toggle-form {
   position: absolute;
-  bottom: 20px; /* Moved lower from 38px */
+  bottom: 15px; /* Moved higher from 20px */
   margin-top: 0;
   width: 100%;
   text-align: center;
