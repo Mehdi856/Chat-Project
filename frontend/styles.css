@@ -3913,3 +3913,17 @@ input:checked + .privacy-slider:before {
 .message.received .download-btn {
   background: rgba(0, 0, 0, 0.05);
 }
+.header-logo {
+  max-height: 48px;
+  display: block;
+  margin: 0 auto;
+  object-fit: contain;
+}
+
+.header-center {
+  grid-column: 2;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+}
