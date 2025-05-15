@@ -153,8 +153,9 @@ async def logout_user():
 
 # ✅ WebSocket Endpoint
 @app.websocket("/ws")
+@app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
-    """Handles real-time chat via WebSockets."""
+    """Handles real-time chat via WebSockets with improved message handling."""
     await websocket.accept()
     sender_uid = None
 
@@ -209,7 +210,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     "sender": sender_uid,
                     "receiver": receiver_uid,
                     "timestamp": firestore.SERVER_TIMESTAMP,
-                    "type": data.get("type", "text"),
+                    "type": "text",
                     "text": text
                 }
 
@@ -218,7 +219,8 @@ async def websocket_endpoint(websocket: WebSocket):
                     message_data.update({
                         "file_url": file_url,
                         "file_type": file_type,
-                        "file_size": file_size
+                        "file_size": file_size,
+                        "type": file_type.split('/')[0]  # 'image', 'video', etc.
                     })
 
                 # Encrypt message text
@@ -227,8 +229,22 @@ async def websocket_endpoint(websocket: WebSocket):
                 # Store in Firestore
                 db.collection("messages").add(message_data)
 
+                # Prepare data to send to receiver
+                send_data = {
+                    "type": "message",
+                    "sender": sender_uid,
+                    "text": text,
+                    "timestamp": datetime.now().isoformat()
+                }
+                if file_url:
+                    send_data.update({
+                        "file_url": file_url,
+                        "file_type": file_type,
+                        "file_size": file_size
+                    })
+
                 # Send to receiver if online
-                await websocket_manager.send_message(receiver_uid, data, sender_uid)
+                await websocket_manager.send_message(receiver_uid, send_data, sender_uid)
 
             elif message_type == "typing":
                 receiver_uid = data.get("receiver")
@@ -236,8 +252,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     # Forward typing indicator to receiver
                     await websocket_manager.send_typing_indicator(receiver_uid, sender_uid)
                         
-
-            if message_type == "group_message":
+            elif message_type == "group_message":
                 group_id = data.get("group_id")
                 text = data.get("text")
                 file_url = data.get("file_url")
@@ -261,7 +276,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     "group_id": group_id,
                     "sender": sender_uid,
                     "timestamp": firestore.SERVER_TIMESTAMP,
-                    "type": data.get("type", "text"),
+                    "type": "text",
                     "text": text
                 }
 
@@ -270,7 +285,8 @@ async def websocket_endpoint(websocket: WebSocket):
                     message_data.update({
                         "file_url": file_url,
                         "file_type": file_type,
-                        "file_size": file_size
+                        "file_size": file_size,
+                        "type": file_type.split('/')[0]  # 'image', 'video', etc.
                     })
 
                 # Encrypt message text
@@ -279,11 +295,26 @@ async def websocket_endpoint(websocket: WebSocket):
                 # Store in Firestore
                 db.collection("group_messages").add(message_data)
                 
+                # Prepare data to send to group members
+                send_data = {
+                    "type": "group_message",
+                    "group_id": group_id,
+                    "sender": sender_uid,
+                    "text": text,
+                    "timestamp": datetime.now().isoformat()
+                }
+                if file_url:
+                    send_data.update({
+                        "file_url": file_url,
+                        "file_type": file_type,
+                        "file_size": file_size
+                    })
+
                 # Send to group members
                 await websocket_manager.send_group_message(
                     group_id=group_id,
                     sender_uid=sender_uid,
-                    message_data=data,
+                    message_data=send_data,
                     members=group_data.get("members", [])
                 )
 
@@ -308,6 +339,10 @@ async def websocket_endpoint(websocket: WebSocket):
                     members=group_data.get("members", [])
                 )
 
+            elif message_type == "notification":
+                # Handle custom notification types if needed
+                pass
+
     except WebSocketDisconnect:
         print(f"🔴 User {sender_uid} disconnected")
         if sender_uid:
@@ -317,6 +352,7 @@ async def websocket_endpoint(websocket: WebSocket):
         if sender_uid:
             await websocket_manager.disconnect(sender_uid)
         await websocket.close(code=1011)
+
 
 
 # ✅ Get Contacts

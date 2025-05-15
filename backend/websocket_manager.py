@@ -36,11 +36,11 @@ class WebSocketManager:
                         "type": message_data.get("type", "message"),
                         "sender": sender_uid,
                         "text": message_data.get("text"),
-                        "timestamp": None
+                        "timestamp": message_data.get("timestamp")
                     }
 
-                    # Add file data if present
-                    if message_data.get("file_url"):
+                    # Only add file data if present
+                    if "file_url" in message_data:
                         message.update({
                             "file_url": message_data.get("file_url"),
                             "file_type": message_data.get("file_type"),

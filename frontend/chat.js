@@ -426,50 +426,70 @@ function renderMessage(message) {
     messageDiv.classList.add("message", isSentByMe ? "sent" : "received");
     
     let content = '';
+    const timeString = formatTime(new Date(message.timestamp || Date.now()));
     
     // Handle different message types
     switch(message.type) {
         case 'image':
             content = `
                 <div class="message-file image">
-                    <img src="${message.file_url}" alt="${message.text}" loading="lazy">
-                    <div class="file-name">${message.text}</div>
+                    <img src="${message.file_url}" alt="${message.text}" loading="lazy" class="message-image">
+                    <div class="message-meta">
+                        <span class="message-time">${timeString}</span>
+                    </div>
                 </div>`;
             break;
+            
         case 'video':
             content = `
                 <div class="message-file video">
-                    <video controls>
+                    <video controls class="message-video">
                         <source src="${message.file_url}" type="${message.file_type}">
                         Your browser does not support the video tag.
                     </video>
-                    <div class="file-name">${message.text}</div>
+                    <div class="message-meta">
+                        <span class="message-time">${timeString}</span>
+                    </div>
                 </div>`;
             break;
+            
         case 'file':
             content = `
                 <div class="message-file document">
-                    <i class="fas fa-file"></i>
+                    <div class="file-icon">
+                        <i class="fas fa-file"></i>
+                    </div>
                     <div class="file-info">
                         <div class="file-name">${message.text}</div>
                         <div class="file-size">${formatFileSize(message.file_size)}</div>
+                        <a href="${message.file_url}" target="_blank" class="download-link">Download</a>
                     </div>
-                    <a href="${message.file_url}" target="_blank" class="download-btn">
-                        <i class="fas fa-download"></i>
-                    </a>
+                    <div class="message-meta">
+                        <span class="message-time">${timeString}</span>
+                    </div>
                 </div>`;
             break;
+            
         default:
             // Regular text message
             if (currentGroupId) {
                 // Group message with sender name
                 const senderName = message.sender_name || "Member";
                 content = `
-                    <small class="group-sender-name">${isSentByMe ? "You" : senderName}</small>
-                    <div>${message.text}</div>`;
+                    <div class="message-content">
+                        <small class="group-sender-name">${isSentByMe ? "You" : senderName}</small>
+                        <div class="message-text">${message.text}</div>
+                        <div class="message-meta">
+                            <span class="message-time">${timeString}</span>
+                        </div>
+                    </div>`;
             } else {
                 // Private message
-                content = `<div>${message.text}</div>`;
+                content = `
+                        <div class="message-text">${message.text}</div>
+                        <div class="message-meta">
+                            <span class="message-time">${timeString}</span>
+                        </div>`;
             }
     }
     
@@ -603,33 +623,59 @@ function setupWebSocket(user) {
     ws.onmessage = (event) => {
         try {
             const data = JSON.parse(event.data);
-    
-            if (data.type === "message") {
-                handleNewMessage(data);
-            } else if (data.type === "group_message") {
-                handleNewGroupMessage(data);
-            } else if (data.type === "typing") {
-                showTypingIndicator(data.sender);
-            } else if (data.type === "group_typing") {
-                showGroupTypingIndicator(data.group_id, data.sender);
-            } else if (data.type === "notification") {
-                fetchPendingContactRequests();
-            } else if (data.type === "profile_picture_update") {
-                // Update profile picture in UI
-                const user = getCurrentUser();
-                if (user && data.profile_picture_url) {
-                    user.profile_picture_url = data.profile_picture_url;
-                    localStorage.setItem("user", JSON.stringify(user));
-                    updateProfilePictureUI(user);
+
+            // Check if message has file attributes and set the appropriate type for rendering
+            if (data.file_url && (data.type === "message" || data.type === "group_message")) {
+                // Detect message type from mime type if possible
+                const fileType = data.file_type || '';
+                
+                // Clone the data for safe modification
+                const messageData = {...data};
+                
+                // Set message type for proper rendering
+                if (fileType.startsWith('image/')) {
+                    messageData.type = 'image';
+                } else if (fileType.startsWith('video/')) {
+                    messageData.type = 'video';
+                } else if (data.file_url) {
+                    messageData.type = 'file';
                 }
-            } else if (data.type === 'webrtc_offer') {
-                handleIncomingCall(data);
-            } else if (data.type === 'webrtc_answer') {
-                handleAnswer(data);
-            } else if (data.type === 'webrtc_ice') {
-                handleICECandidate(data);
-            } else if (data.type === 'webrtc_end') {
-                handleCallEnd();
+                
+                // Process based on message category
+                if (data.type === "message") {
+                    handleNewMessage(messageData);
+                } else if (data.type === "group_message") {
+                    handleNewGroupMessage(messageData);
+                }
+            } else {
+                // Handle normal messages
+                if (data.type === "message") {
+                    handleNewMessage(data);
+                } else if (data.type === "group_message") {
+                    handleNewGroupMessage(data);
+                } else if (data.type === "typing") {
+                    showTypingIndicator(data.sender);
+                } else if (data.type === "group_typing") {
+                    showGroupTypingIndicator(data.group_id, data.sender);
+                } else if (data.type === "notification") {
+                    fetchPendingContactRequests();
+                } else if (data.type === "profile_picture_update") {
+                    // Update profile picture in UI
+                    const user = getCurrentUser();
+                    if (user && data.profile_picture_url) {
+                        user.profile_picture_url = data.profile_picture_url;
+                        localStorage.setItem("user", JSON.stringify(user));
+                        updateProfilePictureUI(user);
+                    }
+                } else if (data.type === 'webrtc_offer') {
+                    handleIncomingCall(data);
+                } else if (data.type === 'webrtc_answer') {
+                    handleAnswer(data);
+                } else if (data.type === 'webrtc_ice') {
+                    handleICECandidate(data);
+                } else if (data.type === 'webrtc_end') {
+                    handleCallEnd();
+                }
             }
         } catch (error) {
             console.error("❌ Error parsing WebSocket message:", error);
@@ -737,16 +783,96 @@ function updateContactUI() {
 }
 
 function showTypingIndicator(senderUID) {
-    if (senderUID === currentChatUID) {
+    if (senderUID === currentChatUID || senderUID === currentGroupId) {
         typingIndicator.style.display = "block";
-        typingIndicator.textContent = "typing...";
-        setTimeout(() => {
+        typingIndicator.textContent = currentGroupId 
+            ? `${getMemberName(senderUID)} is typing...` 
+            : "typing...";
+        clearTimeout(typingIndicator.timeout);
+        typingIndicator.timeout = setTimeout(() => {
             typingIndicator.style.display = "none";
         }, 2000);
     }
 }
-
+function getMemberName(uid) {
+    if (!currentGroupData) return "Member";
+    const member = currentGroupData.members.find(m => m.uid === uid);
+    return member ? member.name || member.username || "Member" : "Member";
+}
 function setupEventListeners() {
+    console.log("Setting up event listeners...");
+console.log("Send button:", document.getElementById('send-btn'));
+console.log("Message input:", document.getElementById('message-input'));
+        // Get the send button and message input elements
+    const sendButton = document.getElementById('send-btn');
+    const messageInput = document.getElementById('message-input');
+
+    // Remove any existing event listeners first to avoid duplicates
+    sendButton.removeEventListener('click', handleSendMessage);
+    messageInput.removeEventListener('keydown', handleKeyDown);
+
+    // Add new event listeners
+    sendButton.addEventListener('click', handleSendMessage);
+    messageInput.addEventListener('keydown', handleKeyDown);
+    // Prevent form submission if the message input is inside a form
+    document.querySelectorAll('form').forEach(form => {
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+        });
+    });
+    // Fix for attachment button
+    const attachmentBtn = document.getElementById('attachment-btn');
+    const attachmentMenu = document.querySelector('.attachment-menu');
+    
+    if (attachmentBtn) {
+        attachmentBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            attachmentMenu.classList.toggle('show');
+        });
+    }
+
+    // Fix for file input changes
+    document.getElementById('image-upload')?.addEventListener('change', handleFileSelect);
+    document.getElementById('video-upload')?.addEventListener('change', handleFileSelect);
+    document.getElementById('file-upload')?.addEventListener('change', handleFileSelect);
+
+    // Close menu when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.attachment-container')) {
+            attachmentMenu?.classList.remove('show');
+        }
+    });
+        // Enhanced message sending
+    sendBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        sendMessage();
+    });
+    
+    messageInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
+
+    // Add file attachment handling
+    document.getElementById('attachment-btn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        document.querySelector('.attachment-menu').classList.toggle('show');
+    });
+
+    // File input handlers
+    document.getElementById('image-upload').addEventListener('change', handleFileSelect);
+    document.getElementById('video-upload').addEventListener('change', handleFileSelect);
+    document.getElementById('file-upload').addEventListener('change', handleFileSelect);
+    
+    // Close attachment menu when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.attachment-container')) {
+            document.querySelector('.attachment-menu').classList.remove('show');
+        }
+    });
     // Add this new event listener for the contacts search
     const contactSearchInput = document.querySelector('input[placeholder="Search contacts..."]');
     if (contactSearchInput) {
@@ -1343,51 +1469,119 @@ function startCallTimer() {
     }, 1000);
 }
 
-async function sendMessage() {
-    const text = messageInput.value.trim();
-    if (!text) return;
+async function sendMessage(messageContent) {
+    // Use the passed content if provided, otherwise check input
+    const text = messageContent || document.getElementById('message-input').value.trim();
+    
+    if (!text && !currentFile) {
+        console.log("No content to send");
+        return;
+    }
 
     try {
         const user = getCurrentUser();
-        if (!user) throw new Error("User not authenticated");
+        if (!user) {
+            throw new Error("User not authenticated");
+        }
 
-        if (currentChatUID) {
-            // Private message
-            const message = {
-                type: "message",
-                text: text,
-                sender: user.uid,
-                receiver: currentChatUID,
-                timestamp: new Date().toISOString()
-            };
+        // Check WebSocket connection
+        if (!ws || ws.readyState !== WebSocket.OPEN) {
+            console.warn("WebSocket not connected, attempting to reconnect...");
+            setupWebSocket(user);
+            throw new Error("Please try sending again. Connecting to chat...");
+        }
 
-            // Send via WebSocket
-            ws.send(JSON.stringify(message));
+        // Handle file upload if present
+        if (currentFile) {
+            try {
+                await handleFileUpload(currentFile, currentFileType);
+                // Clear file after upload
+                currentFile = null;
+                currentFileType = null;
+                document.getElementById('file-preview').style.display = 'none';
+                // Clear any file inputs
+                document.getElementById('image-upload').value = '';
+                document.getElementById('video-upload').value = '';
+                document.getElementById('file-upload').value = '';
+                return; // File upload will trigger its own message
+            } catch (error) {
+                console.error("File upload failed:", error);
+                showMessageError("Failed to upload file. Please try again.");
+                return;
+            }
+        }
 
-            // Handle the sent message locally
-            handleNewMessage(message);
-        } else if (currentGroupId) {
-            // Group message
-            const message = {
-                type: "group_message",
-                text: text,
-                sender: user.uid,
-                group_id: currentGroupId,
-                timestamp: new Date().toISOString()
-            };
+        // Prepare the message object
+        const message = {
+            type: currentGroupId ? "group_message" : "message",
+            text: text,
+            sender: user.uid,
+            timestamp: new Date().toISOString()
+        };
 
-            // Send via WebSocket
-            ws.send(JSON.stringify(message));
+        // Add receiver/group info
+        if (currentGroupId) {
+            message.group_id = currentGroupId;
+        } else if (currentChatUID) {
+            message.receiver = currentChatUID;
+        } else {
+            throw new Error("No active chat selected");
+        }
 
-            // Handle the sent message locally
+        // Send via WebSocket
+        ws.send(JSON.stringify(message));
+
+        // Handle the sent message locally
+        if (currentGroupId) {
             handleNewGroupMessage(message);
+        } else {
+            handleNewMessage(message);
         }
 
         // Clear input field
         messageInput.value = "";
+        
     } catch (error) {
-        console.error("❌ Failed to send message:", error);
+        console.error("Failed to send message:", error);
+        showMessageError(error.message || "Failed to send message. Please try again.");
+        
+        // If it's a WebSocket error, try to reconnect
+        if (error.message.includes("WebSocket")) {
+            const user = getCurrentUser();
+            if (user) {
+                setupWebSocket(user);
+            }
+        }
     }
+}
+
+// Update your message input event listeners
+messageInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        console.log("Enter key pressed - attempting to send");
+        sendMessage();
+    }
+});
+
+sendBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    console.log("Send button clicked - attempting to send");
+    sendMessage();
+});
+function showMessageError(message) {
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'message-error';
+    errorDiv.textContent = message;
+    messagesContainer.appendChild(errorDiv);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        if (errorDiv.parentNode) {
+            errorDiv.remove();
+        }
+    }, 5000);
 }
 
 async function addContact() {
@@ -3153,37 +3347,45 @@ async function handleFileUpload(file, type) {
                 throw new Error('Invalid response from server');
             }
             
-            // Create message with file
+            // Create base message with file data
             const messageData = {
-                type: type,
                 text: file.name,
                 file_url: data.file_url,
-                file_type: data.file_type,
-                file_size: data.file_size,
+                file_type: data.file_type || type,
+                file_size: data.file_size || file.size,
                 sender: user.uid,
                 timestamp: new Date().toISOString()
             };
 
+            // Create a local copy for rendering with the correct type
+            const localMessageData = {...messageData, type};
+
             if (currentChatUID) {
-                // Private chat
-                messageData.type = "message";
-                messageData.receiver = currentChatUID;
+                // Private chat - send standard message format to server
+                const serverMessageData = {
+                    ...messageData,
+                    type: "message",
+                    receiver: currentChatUID
+                };
                 
                 // Send via WebSocket
-                ws.send(JSON.stringify(messageData));
+                ws.send(JSON.stringify(serverMessageData));
                 
-                // Handle locally
-                handleNewMessage(messageData);
+                // Handle locally with file type for proper rendering
+                handleNewMessage(localMessageData);
             } else if (currentGroupId) {
-                // Group chat
-                messageData.type = "group_message";
-                messageData.group_id = currentGroupId;
+                // Group chat - send standard group message format to server
+                const serverMessageData = {
+                    ...messageData,
+                    type: "group_message",
+                    group_id: currentGroupId
+                };
                 
                 // Send via WebSocket
-                ws.send(JSON.stringify(messageData));
+                ws.send(JSON.stringify(serverMessageData));
                 
-                // Handle locally
-                handleNewGroupMessage(messageData);
+                // Handle locally with file type for proper rendering
+                handleNewGroupMessage(localMessageData);
             }
 
         } catch (error) {
@@ -3250,3 +3452,84 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style);
+let currentFile = null;
+let currentFileType = null;
+
+function handleFileSelect(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    currentFile = file;
+    currentFileType = e.target.id.replace('-upload', ''); // 'image', 'video', or 'file'
+    
+    // Show preview
+    const previewDiv = document.getElementById('file-preview');
+    previewDiv.style.display = 'flex';
+    previewDiv.innerHTML = '';
+    
+    if (currentFileType === 'image') {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            previewDiv.innerHTML = `
+                <img src="${event.target.result}" alt="Preview" class="file-preview-img">
+                <div class="file-info">
+                    <span>${file.name}</span>
+                    <button class="remove-file-btn">&times;</button>
+                </div>
+            `;
+        };
+        reader.readAsDataURL(file);
+    } else if (currentFileType === 'video') {
+        const videoURL = URL.createObjectURL(file);
+        previewDiv.innerHTML = `
+            <video controls class="file-preview-video">
+                <source src="${videoURL}" type="${file.type}">
+                Your browser does not support the video tag.
+            </video>
+            <div class="file-info">
+                <span>${file.name}</span>
+                <button class="remove-file-btn">&times;</button>
+            </div>
+        `;
+    } else {
+        previewDiv.innerHTML = `
+            <div class="file-preview-icon">
+                <i class="fas fa-file"></i>
+            </div>
+            <div class="file-info">
+                <span>${file.name}</span>
+                <button class="remove-file-btn">&times;</button>
+            </div>
+        `;
+    }
+    
+    // Add remove file button handler
+    previewDiv.querySelector('.remove-file-btn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        currentFile = null;
+        currentFileType = null;
+        e.target.closest('.file-preview').style.display = 'none';
+        // Reset file inputs
+        document.getElementById('image-upload').value = '';
+        document.getElementById('video-upload').value = '';
+        document.getElementById('file-upload').value = '';
+    });
+}
+// Separate handler for send button click
+function handleSendMessage(e) {
+    e.preventDefault();
+    const messageInput = document.getElementById('message-input');
+    const text = messageInput.value.trim();
+    console.log("Send button clicked. Passing content:", text);
+    sendMessage(text);  // Pass the content directly
+}
+// Separate handler for keydown events
+function handleKeyDown(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        const messageInput = document.getElementById('message-input');
+        const text = messageInput.value.trim();
+        console.log("Enter pressed. Passing content:", text);
+        sendMessage(text);  // Pass the content directly
+    }
+}
