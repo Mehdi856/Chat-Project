@@ -11,7 +11,7 @@ body {
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  background: linear-gradient(135deg, #2e57df, #193286);
+  background: linear-gradient(135deg, #0d2679, #0c1e58);
   padding: 15px;
 }
 
@@ -50,7 +50,7 @@ body {
 
 .welcome-container {
   right: 0;
-  background: linear-gradient(135deg, #193286, #2e57df);
+  background: linear-gradient(135deg, #0c1e58, #0d2679);
   text-align: center;
   padding: 40px;
   color: white;
@@ -85,7 +85,7 @@ p {
   height: 45px;
   width: 45px;
   text-decoration: none;
-  color: #2e57df;
+  color: #0d2679;
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
   transition: all 0.3s ease;
   font-size: 18px;
@@ -134,7 +134,7 @@ input.invalid {
 button {
   border-radius: 30px;
   border: none;
-  background: linear-gradient(45deg, #2e57df, #193286);
+  background: linear-gradient(45deg, #0d2679, #0c1e58);
   color: white;
   font-size: 14px;
   font-weight: 600;
@@ -184,7 +184,7 @@ form {
 }
 
 .forgot-password {
-  color: #2e57df;
+  color: #0d2679;
   font-size: 13px;
   text-decoration: none;
   margin: 15px 0;
@@ -193,7 +193,7 @@ form {
 }
 
 .forgot-password:hover {
-  color: #193286;
+  color: #0c1e58;
   transform: translateY(-2px);
 }
 
@@ -227,14 +227,14 @@ form {
 }
 
 .toggle-form a {
-  color: #2e57df;
+  color: #0d2679;
   font-weight: 600;
   text-decoration: none;
   transition: all 0.3s ease;
 }
 
 .toggle-form a:hover {
-  color: #193286;
+  color: #0c1e58;
   text-decoration: underline;
 }
 
@@ -309,7 +309,7 @@ form {
 }
 
 .message.info {
-  background: linear-gradient(135deg, #2e57df, #193286);
+  background: linear-gradient(135deg, #0d2679, #0c1e58);
   color: white;
 }
 
@@ -373,7 +373,7 @@ form {
   align-items: center;
   gap: 10px;
   height: 60px;
-  background: linear-gradient(135deg, #2e57df, #193286);
+  background: linear-gradient(135deg, #0d2679, #0c1e58);
   color: white;
 }
 
@@ -616,7 +616,7 @@ body {
 
 /* Updated Header Styles */
 header {
-  background: linear-gradient(135deg, #2e57df, #193286);
+  background: linear-gradient(135deg, #0d2679, #0c1e58);
   color: white;
   padding: 19px 25px;
   display: grid;
@@ -801,7 +801,7 @@ header h1 {
 
 /* Button Styles */
 button {
-  background: linear-gradient(135deg, #2e57df, #193286);
+  background: linear-gradient(135deg, #0d2679, #0c1e58);
   color: white;
   border: none;
   padding: 10px 20px;
@@ -853,7 +853,7 @@ button:hover {
 }
 
 .search-container input:focus {
-  border-color: #2e57df;
+  border-color: #0d2679;
   box-shadow: 0 0 0 3px rgba(110, 142, 251, 0.1);
   background-color: white;
 }
@@ -896,7 +896,7 @@ button:hover {
 
 .contact-item.active {
   background-color: #e8ecff;
-  border-left: 3px solid #2e57df;
+  border-left: 3px solid #0d2679;
 }
 
 .contact-avatar {
@@ -958,7 +958,7 @@ button:hover {
   right: 15px;
   top: 70%;
   transform: translateY(-50%);
-  background-color: #2e57df;
+  background-color: #0d2679;
   color: white;
   border-radius: 50%;
   min-width: 25px;
@@ -1048,7 +1048,7 @@ button:hover {
   font-size: 20px;
   cursor: pointer;
   margin-right: -50px;
-  color: #2e57df;
+  color: #0d2679;
   transition: all 0.2s ease;
   margin-top: -50px;
 }
@@ -1083,7 +1083,7 @@ button:hover {
 
 .typing-indicator {
   font-size: 12px;
-  color: #2e57df;
+  color: #0d2679;
   font-style: italic;
   margin-top: 2px;
   display: none;
@@ -1145,8 +1145,8 @@ button:hover {
 }
 
 .message.sent .message-content {
-  background: linear-gradient(135deg, #2e57df, #193286);
-  color: white;
+  background: #193286 !important;
+  color: #fff !important;
   border-top-right-radius: 4px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
@@ -1161,11 +1161,17 @@ button:hover {
 .message.sent .message-time {
   text-align: right;
   padding-right: 8px;
+  color: #fff;
+  font-weight: bold;
+  text-decoration: underline;
 }
 
 .message.received .message-time {
   text-align: left;
   padding-left: 8px;
+  color: #555;
+  font-weight: bold;
+  text-decoration: underline;
 }
 
 /* Message Input */
@@ -1194,7 +1200,7 @@ button:hover {
 }
 
 #message-input:focus {
-  border-color: #2e57df;
+  border-color: #0d2679;
   box-shadow: 0 2px 8px rgba(110, 142, 251, 0.15);
   background-color: white;
 }
@@ -1207,7 +1213,7 @@ button:hover {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #2e57df, #193286);
+  background: linear-gradient(135deg, #0d2679, #0c1e58);
   box-shadow: 0 3px 10px rgba(110, 142, 251, 0.3);
   transition: all 0.3s ease;
   position: relative;
@@ -1264,7 +1270,7 @@ button:hover {
 }
 
 #contact-uid-input:focus, #group-name-input:focus {
-  border-color: #2e57df;
+  border-color: #0d2679;
   box-shadow: 0 0 0 3px rgba(110, 142, 251, 0.1);
   background-color: white;
   outline: none;
@@ -1279,7 +1285,7 @@ button:hover {
 .contact-buttons button {
   flex: 1;
   padding: 6px 0;
-  background-color: #2e57df;
+  background-color: #0d2679;
   color: white;
   border: none;
   border-radius: 5px;
@@ -1452,14 +1458,14 @@ button:hover {
 
 #group-name-input:focus {
   outline: none;
-  border-color: #2e57df;
+  border-color: #0d2679;
   background-color: #fff;
   box-shadow: 0 2px 10px rgba(110, 142, 251, 0.1);
 }
 
 .primary-button {
   padding: 12px 36px;
-  background: linear-gradient(135deg, #2e57df, #193286);
+  background: linear-gradient(135deg, #0d2679, #0c1e58);
   color: white;
   border: none;
   border-radius: 50px;
@@ -1478,7 +1484,7 @@ button:hover {
 .back-button {
   font-size: 20px;
   cursor: pointer;
-  color: #2e57df;
+  color: #0d2679;
   transition: all 0.2s ease;
   align-self: flex-start;
   margin-right: 15px;
@@ -1491,7 +1497,7 @@ button:hover {
 
 #add-contact-btn, #create-group-btn {
   padding: 12px 24px;
-  background: linear-gradient(135deg, #2e57df, #193286);
+  background: linear-gradient(135deg, #0d2679, #0c1e58);
   color: white;
   border: none;
   border-radius: 12px;
@@ -1555,7 +1561,7 @@ button:hover {
   border: none;
   font-size: 16px;
   cursor: pointer;
-  color: #2e57df;
+  color: #0d2679;
   width: 32px;
   height: 32px;
   display: flex;
@@ -1733,7 +1739,7 @@ button:hover {
 }
 
 .search-wrapper:focus-within {
-  border-color: #2e57df;
+  border-color: #0d2679;
   box-shadow: 0 0 0 3px rgba(110, 142, 251, 0.1);
   background-color: white;
 }
@@ -1750,7 +1756,7 @@ button:hover {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #2e57df;
+  color: #0d2679;
   cursor: pointer;
   transition: all 0.3s ease;
   padding: 0;
@@ -1796,13 +1802,13 @@ button:hover {
 }
 
 .tab-button:hover {
-  color: #2e57df;
+  color: #0d2679;
   transform: translateY(0);
   box-shadow: none;
 }
 
 .tab-button.active {
-  background: linear-gradient(135deg, #2e57df, #193286);
+  background: linear-gradient(135deg, #0d2679, #0c1e58);
   color: white;
   box-shadow: 0 4px 15px rgba(110, 142, 251, 0.2);
 }
@@ -1874,7 +1880,7 @@ button:hover {
   margin-top: 15px;
   padding: 8px 16px;
   font-size: 12px;
-  background: linear-gradient(45deg, #2e57df, #193286);
+  background: linear-gradient(45deg, #0d2679, #0c1e58);
   color: white;
   border: none;
   border-radius: 20px;
@@ -1936,7 +1942,7 @@ button:hover {
 }
 
 .username-modal-content button {
-  background-color: #2e57df;
+  background-color: #0d2679;
   color: white;
   border: none;
   padding: 0.8rem 1.5rem;
@@ -2049,13 +2055,13 @@ button:hover {
 }
 
 .profile-tab:hover {
-  color: #2e57df;
+  color: #0d2679;
   background-color: #f6f9ff;
   transform: translateY(-2px);
 }
 
 .profile-tab.active {
-  color: #2e57df;
+  color: #0d2679;
   background-color: #f0f5ff;
   font-weight: 600;
   box-shadow: 0 2px 8px rgba(110, 142, 251, 0.15);
@@ -2083,7 +2089,7 @@ button:hover {
 }
 
 .name-change-input:focus {
-  border-color: #2e57df;
+  border-color: #0d2679;
   box-shadow: 0 0 0 3px rgba(110, 142, 251, 0.15), inset 0 2px 5px rgba(0, 0, 0, 0.05);
   outline: none;
 }
@@ -2129,7 +2135,7 @@ button:hover {
 }
 
 #profile-picture-file:hover {
-  border-color: #2e57df;
+  border-color: #0d2679;
   background-color: #f8faff;
 }
 
@@ -2166,7 +2172,7 @@ button:hover {
 }
 
 .name-change-submit {
-  background: linear-gradient(135deg, #2e57df, #193286);
+  background: linear-gradient(135deg, #0d2679, #0c1e58);
   color: white;
   box-shadow: 0 5px 15px rgba(110, 142, 251, 0.3);
 }
@@ -2199,7 +2205,7 @@ button:hover {
 
 #user-search-input:focus {
   outline: none;
-  border-color: #2e57df;
+  border-color: #0d2679;
   background-color: #fff;
   box-shadow: 0 2px 10px rgba(110, 142, 251, 0.1);
 }
@@ -2415,7 +2421,7 @@ button:hover {
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  background: #2e57df;
+  background: #0d2679;
   color: white;
   display: flex;
   align-items: center;
@@ -2454,7 +2460,7 @@ button:hover {
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #2e57df, #193286);
+  background: linear-gradient(135deg, #0d2679, #0c1e58);
   color: white;
   display: flex;
   align-items: center;
@@ -2503,16 +2509,16 @@ button:hover {
 }
 
 .message.sent {
-  background-color: #2e57df;
-  color: white;
+  background-color: #193286 !important;
+  color: #fff !important;
   margin-left: auto;
   border-bottom-right-radius: 4px;
   max-width: 80% ;
 }
 
 .message.received {
-  background-color: #f1f1f1;
-  color: #333;
+  background-color: #e0e3ea !important;
+  color: #222 !important;
   margin-right: auto;
   border-bottom-left-radius: 4px;
   max-width: 80% ;
@@ -2568,7 +2574,7 @@ button:hover {
   width: 50px; /* Consistent size */
   height: 50px; /* Consistent size */
   border-radius: 50%;
-  background: linear-gradient(135deg, #2e57df, #193286);
+  background: linear-gradient(135deg, #0d2679, #0c1e58);
   color: white;
   display: flex;
   align-items: center;
@@ -2660,7 +2666,7 @@ button:hover {
 .groups-list .group-item.active,
 .groups-list .contact-item.active {
   background-color: #e8ecff;
-  border-left: 3px solid #2e57df;
+  border-left: 3px solid #0d2679;
 }
 
 
@@ -2805,7 +2811,7 @@ button:hover {
 }
 
 input:checked + .privacy-slider {
-  background: linear-gradient(135deg, #2e57df, #193286);
+  background: linear-gradient(135deg, #0d2679, #0c1e58);
 }
 
 input:checked + .privacy-slider:before {
@@ -2829,7 +2835,7 @@ input:checked + .privacy-slider:before {
 }
 
 .privacy-hint i {
-  color: #2e57df;
+  color: #0d2679;
 }
 
 /* Group Privacy Indicator in List */
@@ -2928,7 +2934,7 @@ input:checked + .privacy-slider:before {
 .chat-header .call-buttons button {
   background-color: #e8e8e8 !important;
   border: none !important;
-  color: #2e57df !important;
+  color: #0d2679 !important;
   font-size: 1.2rem !important;
   cursor: pointer;
   width: 40px !important;
@@ -3148,7 +3154,7 @@ input:checked + .privacy-slider:before {
 .chat-header .menu-button {
   background-color: #e8e8e8 !important;
   padding: 0 !important;
-  color: #2e57df !important;
+  color: #0d2679 !important;
   font-size: 1.2rem !important;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05) !important;
 }
@@ -3175,7 +3181,7 @@ input:checked + .privacy-slider:before {
 .chat-header .call-buttons button {
   background-color: #e8e8e8 !important;
   border: none !important;
-  color: #2e57df !important;
+  color: #0d2679 !important;
   font-size: 1.2rem !important;
   cursor: pointer;
   width: 40px !important;
@@ -3197,9 +3203,9 @@ input:checked + .privacy-slider:before {
 
 /* Fix menu button with !important to override any conflicting styles */
 .chat-header .menu-button {
-  background-color: #193286 !important;
+  background-color: #0c1e58 !important;
   border: none !important;
-  color: #2e57df !important;
+  color: #0d2679 !important;
   font-size: 1.2rem !important;
   cursor: pointer;
   width: 40px !important;
@@ -3214,7 +3220,7 @@ input:checked + .privacy-slider:before {
 }
 
 .chat-header .menu-button:hover {
-  background-color: #193286  !important;
+  background-color: #0c1e58  !important;
   transform: scale(1.05) !important;
   box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1) !important;
 }
@@ -3247,7 +3253,7 @@ input:checked + .privacy-slider:before {
 
 .chat-header .call-buttons button:hover,
 .chat-header .menu-button:hover {
-  background-color: #193286  !important;
+  background-color: #0c1e58  !important;
   transform: scale(1.05) !important;
   box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1) !important;
 }
@@ -3255,7 +3261,7 @@ input:checked + .privacy-slider:before {
 .chat-header .menu-button {
   background-color: #e8e8e8 !important;
   border: none !important;
-  color: #2e57df !important; /* Blue color for the three dots */
+  color: #0d2679 !important; /* Blue color for the three dots */
   font-size: 1.6rem !important; /* Make dots bolder by increasing font size */
   font-weight: bold !important; /* Extra boldness */
   cursor: pointer;
@@ -3315,7 +3321,7 @@ input:checked + .privacy-slider:before {
 
 /* Ensure the above style doesn't override our color settings by re-stating them */
 .chat-header .menu-button {
-  color: #2e57df !important; /* Keep menu button blue */
+  color: #0d2679 !important; /* Keep menu button blue */
   font-size: 1.6rem !important;
   font-weight: bold !important;
   transform: translateY(-2px) !important;
@@ -3736,7 +3742,7 @@ input:checked + .privacy-slider:before {
   height: 40px;
   border-radius: 50%;
   border: none;
-  background: linear-gradient(135deg, #2e57df, #193286);
+  background: linear-gradient(135deg, #0d2679, #0c1e58);
   color: white;
   font-size: 16px;
   cursor: pointer;
@@ -3785,7 +3791,7 @@ input:checked + .privacy-slider:before {
 .attachment-option i {
   width: 24px;
   margin-right: 12px;
-  color: #2e57df;
+  color: #0d2679;
 }
 
 .attachment-option span {
@@ -3970,7 +3976,7 @@ input:checked + .privacy-slider:before {
 
 .message-file.document i {
   font-size: 2rem;
-  color: #2e57df;
+  color: #0d2679;
 }
 
 .message-file.document .file-info {
@@ -3991,7 +3997,7 @@ input:checked + .privacy-slider:before {
 }
 
 .message-file.document .download-btn {
-  color: #2e57df;
+  color: #0d2679;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -4013,7 +4019,7 @@ input:checked + .privacy-slider:before {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: #2e57df;
+  color: #0d2679;
   gap: 10px;
 }
 
@@ -4037,7 +4043,7 @@ input:checked + .privacy-slider:before {
   height: 40px;
   border-radius: 50%;
   border: none;
-  background: linear-gradient(135deg, #2e57df, #193286);
+  background: linear-gradient(135deg, #0d2679, #0c1e58);
   color: white;
   font-size: 16px;
   cursor: pointer;
@@ -4123,15 +4129,15 @@ input:checked + .privacy-slider:before {
 }
 
 .message.sent {
-    background-color: #007bff;
-    color: white;
+    background-color: #193286 !important;
+    color: #fff !important;
     margin-left: auto;
     border-bottom-right-radius: 4px;
 }
 
 .message.received {
-    background-color: #f1f1f1;
-    color: #333;
+    background-color: #e0e3ea !important;
+    color: #222 !important;
     margin-right: auto;
     border-bottom-left-radius: 4px;
 }
@@ -4305,4 +4311,105 @@ input:checked + .privacy-slider:before {
     font-size: 16px;
     padding: 0;
     margin-top: 5px;
+}
+
+/* Improved Pending Add Member Requests UI */
+.pending-request-item {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: #f7f8ff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(44, 62, 80, 0.07);
+  padding: 18px 20px;
+  margin-bottom: 18px;
+  align-items: flex-start;
+}
+.pending-request-info {
+  margin-bottom: 6px;
+}
+.pending-request-label {
+  font-size: 15px;
+  color: #0d2679;
+  margin-bottom: 2px;
+}
+.pending-request-user {
+  font-size: 16px;
+  font-weight: 600;
+  color: #222;
+}
+.pending-request-username {
+  color: #0c1e58;
+}
+.pending-request-name {
+  color: #888;
+  margin-left: 4px;
+}
+.pending-request-actions {
+  display: flex;
+  gap: 12px;
+}
+.pending-request-actions .accept-btn,
+.pending-request-actions .decline-btn {
+  padding: 7px 22px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.pending-request-actions .accept-btn {
+  background: linear-gradient(45deg, #4CAF50, #0d2679);
+  color: #fff;
+}
+.pending-request-actions .accept-btn:hover {
+  background: linear-gradient(45deg, #43a047, #0c1e58);
+}
+.pending-request-actions .decline-btn {
+  background: #f44336;
+  color: #fff;
+}
+.pending-request-actions .decline-btn:hover {
+  background: #c62828;
+}
+
+/* Improved attachment button style */
+.attachment-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: #f7f8ff;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 4px rgba(44, 62, 80, 0.07);
+  margin-right: 8px;
+  margin-top: 2px; /* Move up to align with input */
+  transition: background 0.2s, box-shadow 0.2s;
+  font-size: 20px;
+  color: #0d2679;
+  cursor: pointer;
+}
+.attachment-btn:hover {
+  background: #e3e8fd;
+  color: #0c1e58;
+  box-shadow: 0 2px 8px rgba(44, 62, 80, 0.12);
+}
+.attachment-btn i {
+  font-size: 22px;
+  pointer-events: none;
+}
+
+/* Ensure the message input container aligns items center */
+.message-input-container {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+/* Remove extra margin from input if needed */
+#message-input {
+  margin: 0 8px 0 0;
 }
