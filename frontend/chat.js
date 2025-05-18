@@ -3180,9 +3180,19 @@ async function renderPendingRequests() {
     ]);
     const div = document.createElement('div');
     div.className = 'pending-request-item';
-    div.innerHTML = `<b>${requester.username}</b> requests to add <b>${newMember.username}</b> (${newMember.name})
-      <button class="accept-btn">Accept</button>
-      <button class="decline-btn">Decline</button>`;
+    div.innerHTML = `
+      <div class="pending-request-info">
+        <div class="pending-request-label"><b>${requester.username}</b> requests to add:</div>
+        <div class="pending-request-user">
+          <span class="pending-request-username">${newMember.username}</span>
+          <span class="pending-request-name">(${newMember.name})</span>
+        </div>
+      </div>
+      <div class="pending-request-actions">
+        <button class="accept-btn">Accept</button>
+        <button class="decline-btn">Decline</button>
+      </div>
+    `;
     div.querySelector('.accept-btn').onclick = () => respondToAddRequest(req.id, 'accept');
     div.querySelector('.decline-btn').onclick = () => respondToAddRequest(req.id, 'decline');
     pendingRequestsList.appendChild(div);
@@ -3235,7 +3245,7 @@ const messageInputContainer = document.querySelector('.message-input-container')
 messageInputContainer.innerHTML = `
   <div class="attachment-container">
     <button id="attachment-btn" class="attachment-btn">
-      <i class="fas fa-plus"></i>
+      <i class="fas fa-image"></i>
     </button>
     <div class="attachment-menu">
       <div class="attachment-option" data-type="image">
