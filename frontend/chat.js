@@ -355,6 +355,8 @@ async function openChat(contact) {
     const messages = await loadMessages(contact.uid);
     messagesData[contact.uid] = messages;
     renderMessages(messages);
+    const messageInput = document.getElementById('message-input');
+    if (messageInput) messageInput.value = '';
 }
 
 async function loadMessages(contactUID, getLastOnly = false) {
@@ -1471,8 +1473,7 @@ function startCallTimer() {
 
 async function sendMessage(messageContent) {
     // Use the passed content if provided, otherwise check input
-    const text = messageContent || document.getElementById('message-input').value.trim();
-    
+    const text = messageContent || messageInput.value.trim();
     if (!text && !currentFile) {
         console.log("No content to send");
         return;
@@ -1555,20 +1556,6 @@ async function sendMessage(messageContent) {
     }
 }
 
-// Update your message input event listeners
-messageInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-        e.preventDefault();
-        console.log("Enter key pressed - attempting to send");
-        sendMessage();
-    }
-});
-
-sendBtn.addEventListener("click", (e) => {
-    e.preventDefault();
-    console.log("Send button clicked - attempting to send");
-    sendMessage();
-});
 function showMessageError(message) {
     const errorDiv = document.createElement('div');
     errorDiv.className = 'message-error';
@@ -2084,6 +2071,8 @@ async function openGroupChat(group) {
     
     // Render messages with member details
     renderGroupMessages(messages, members);
+    const messageInput = document.getElementById('message-input');
+    if (messageInput) messageInput.value = '';
 }
 
 function renderGroupMessages(messages, members) {
@@ -3530,8 +3519,10 @@ function handleSendMessage(e) {
     e.preventDefault();
     const messageInput = document.getElementById('message-input');
     const text = messageInput.value.trim();
-    console.log("Send button clicked. Passing content:", text);
-    sendMessage(text);  // Pass the content directly
+    if (text) {
+        sendMessage(text);
+        messageInput.value = '';
+    }
 }
 // Separate handler for keydown events
 function handleKeyDown(e) {
@@ -3539,7 +3530,9 @@ function handleKeyDown(e) {
         e.preventDefault();
         const messageInput = document.getElementById('message-input');
         const text = messageInput.value.trim();
-        console.log("Enter pressed. Passing content:", text);
-        sendMessage(text);  // Pass the content directly
+        if (text) {
+            sendMessage(text);
+            messageInput.value = '';
+        }
     }
 }
