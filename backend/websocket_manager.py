@@ -35,6 +35,7 @@ class WebSocketManager:
                     message = {
                         "type": message_data.get("type", "message"),
                         "sender": sender_uid,
+                        "receiver": uid,
                         "text": message_data.get("text"),
                         "timestamp": message_data.get("timestamp")
                     }
