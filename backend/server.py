@@ -205,13 +205,15 @@ async def websocket_endpoint(websocket: WebSocket):
                 if not receiver_uid or not text:
                     continue
 
+                # Encrypt message text
+                encrypted_text = encrypt_message(text)
                 # Create message data
                 message_data = {
                     "sender": sender_uid,
                     "receiver": receiver_uid,
                     "timestamp": firestore.SERVER_TIMESTAMP,
                     "type": "text",
-                    "text": text
+                    "text": encrypted_text
                 }
 
                 # Add file data if present
@@ -223,8 +225,7 @@ async def websocket_endpoint(websocket: WebSocket):
                         "type": file_type.split('/')[0]  # 'image', 'video', etc.
                     })
 
-                # Encrypt message text
-                message_data["message"] = encrypt_message(text)
+                
 
                 # Store in Firestore
                 db.collection("messages").add(message_data)
@@ -271,13 +272,15 @@ async def websocket_endpoint(websocket: WebSocket):
                 if sender_uid not in group_data.get("members", []):
                     continue
                 
+                # Encrypt message text
+                encrypted_text = encrypt_message(text)
                 # Create message data
                 message_data = {
                     "group_id": group_id,
                     "sender": sender_uid,
                     "timestamp": firestore.SERVER_TIMESTAMP,
                     "type": "text",
-                    "text": text
+                    "text": encrypted_text
                 }
 
                 # Add file data if present
@@ -289,8 +292,7 @@ async def websocket_endpoint(websocket: WebSocket):
                         "type": file_type.split('/')[0]  # 'image', 'video', etc.
                     })
 
-                # Encrypt message text
-                message_data["message"] = encrypt_message(text)
+                
                 
                 # Store in Firestore
                 db.collection("group_messages").add(message_data)
