@@ -374,7 +374,18 @@ async function loadMessages(contactUID, getLastOnly = false) {
         if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
 
         const messages = await response.json();
-        return Array.isArray(messages) ? messages : [];
+        
+        // Process messages to ensure file data is properly structured
+        return messages.map(msg => ({
+            ...msg,
+            // Ensure type is properly set for rendering
+            type: msg.file_url ? 
+                 (msg.file_type.startsWith('image/') ? 'image' : 
+                  msg.file_type.startsWith('video/') ? 'video' : 'file') 
+                 : 'message',
+            // Ensure timestamp is in correct format
+            timestamp: msg.timestamp?.toDate?.()?.toISOString() || msg.timestamp
+        }));
     } catch (error) {
         console.error("❌ Failed to load messages:", error);
         return [];
@@ -435,9 +446,12 @@ function renderMessage(message) {
         case 'image':
             content = `
                 <div class="message-file image">
-                    <img src="${message.file_url}" alt="${message.text}" loading="lazy" class="message-image">
+                    <img src="${message.file_url}" alt="${message.text}" 
+                         loading="lazy" class="message-image"
+                         onclick="openImagePreview('${message.file_url}')">
                     <div class="message-meta">
                         <span class="message-time">${timeString}</span>
+                        ${isSentByMe ? '<i class="fas fa-check-double read-receipt"></i>' : ''}
                     </div>
                 </div>`;
             break;
@@ -445,12 +459,13 @@ function renderMessage(message) {
         case 'video':
             content = `
                 <div class="message-file video">
-                    <video controls class="message-video">
+                    <video controls class="message-video" poster="${getVideoThumbnail(message.file_url)}">
                         <source src="${message.file_url}" type="${message.file_type}">
                         Your browser does not support the video tag.
                     </video>
                     <div class="message-meta">
                         <span class="message-time">${timeString}</span>
+                        ${isSentByMe ? '<i class="fas fa-check-double read-receipt"></i>' : ''}
                     </div>
                 </div>`;
             break;
@@ -459,15 +474,18 @@ function renderMessage(message) {
             content = `
                 <div class="message-file document">
                     <div class="file-icon">
-                        <i class="fas fa-file"></i>
+                        <i class="fas ${getFileIcon(message.file_type)}"></i>
                     </div>
                     <div class="file-info">
                         <div class="file-name">${message.text}</div>
                         <div class="file-size">${formatFileSize(message.file_size)}</div>
-                        <a href="${message.file_url}" target="_blank" class="download-link">Download</a>
+                        <a href="${message.file_url}" download class="download-link">
+                            <i class="fas fa-download"></i> Download
+                        </a>
                     </div>
                     <div class="message-meta">
                         <span class="message-time">${timeString}</span>
+                        ${isSentByMe ? '<i class="fas fa-check-double read-receipt"></i>' : ''}
                     </div>
                 </div>`;
             break;
@@ -699,7 +717,7 @@ function handleNewMessage(message) {
     const currentUser = getCurrentUser();
     const isSentByMe = message.sender === currentUser.uid;
     
-    // Determine the relevant contact UID (whether sender or receiver)
+    // Determine the relevant contact UID
     const contactUID = isSentByMe ? message.receiver : message.sender;
     
     // Initialize message array for this contact if it doesn't exist
@@ -716,17 +734,23 @@ function handleNewMessage(message) {
     // Add the message to the messages data
     messagesData[contactUID].push(newMessage);
     
-    // Render message if in active chat
+    // Render message if:
+    // 1. It's in the active chat (either sent or received)
+    // OR
+    // 2. We sent it (show our own messages immediately)
     if (contactUID === currentChatUID || 
-        (isSentByMe && message.receiver === currentChatUID)) {
+        (isSentByMe && message.receiver === currentChatUID) ||
+        (isSentByMe && currentChatUID === null)) {  // Also handle case when no chat is open
         renderMessage(newMessage);
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    } else if (!isSentByMe) {
-        // Only increment unread count for messages we receive
+    }
+    
+    // Only increment unread count for received messages
+    if (!isSentByMe) {
         unreadMessages[contactUID] = (unreadMessages[contactUID] || 0) + 1;
     }
     
-    // ALWAYS move contact to the top of the list, for both sent and received messages
+    // Always move contact to the top of the list, for both sent and received messages
     moveContactToTop(contactUID);
 }
 
@@ -1473,7 +1497,7 @@ function startCallTimer() {
 
 async function sendMessage(messageContent) {
     // Use the passed content if provided, otherwise check input
-    const text = messageContent || messageInput.value.trim();
+    const text = messageContent || messageInput.value.trim() || "";
     if (!text && !currentFile) {
         console.log("No content to send");
         return;
@@ -1528,6 +1552,12 @@ async function sendMessage(messageContent) {
         } else {
             throw new Error("No active chat selected");
         }
+         // Add file data if present
+        if (currentFile) {
+            message.file_url = currentFile.url;
+            message.file_type = currentFile.type;
+            message.file_size = currentFile.size;
+        }
 
         // Send via WebSocket
         ws.send(JSON.stringify(message));
@@ -1541,7 +1571,8 @@ async function sendMessage(messageContent) {
 
         // Clear input field
         messageInput.value = "";
-        
+        currentFile = null;
+        document.getElementById('file-preview').style.display = 'none';
     } catch (error) {
         console.error("Failed to send message:", error);
         showMessageError(error.message || "Failed to send message. Please try again.");
@@ -1922,7 +1953,18 @@ async function loadGroupMessages(groupId, getLastOnly = false) {
         if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
 
         const messages = await response.json();
-        return Array.isArray(messages) ? messages : [];
+        
+        // Process messages to ensure file data is properly structured
+        return messages.map(msg => ({
+            ...msg,
+            // Ensure type is properly set for rendering
+            type: msg.file_url ? 
+                 (msg.file_type.startsWith('image/') ? 'image' : 
+                  msg.file_type.startsWith('video/') ? 'video' : 'file') 
+                 : 'group_message',
+            // Ensure timestamp is in correct format
+            timestamp: msg.timestamp?.toDate?.()?.toISOString() || msg.timestamp
+        }));
     } catch (error) {
         console.error("❌ Failed to load group messages:", error);
         return [];
@@ -2127,14 +2169,75 @@ function renderGroupMessage(message, members) {
             }
         }
     }
+
+    let content = '';
     
-    messageDiv.innerHTML = `
-        <small class="group-sender-name">${senderName}</small>
-        <div>${message.text}</div>
-    `;
+    // Handle different message types
+    switch(message.type) {
+        case 'image':
+            content = `
+                <small class="group-sender-name">${senderName}</small>
+                <div class="message-file image">
+                    <img src="${message.file_url}" alt="${message.text}" 
+                         loading="lazy" class="message-image"
+                         onclick="openImagePreview('${message.file_url}')">
+                    <div class="message-meta">
+                        <span class="message-time">${timeString}</span>
+                        ${isSentByMe ? '<i class="fas fa-check-double read-receipt"></i>' : ''}
+                    </div>
+                </div>`;
+            break;
+            
+        case 'video':
+            content = `
+                <small class="group-sender-name">${senderName}</small>
+                <div class="message-file video">
+                    <video controls class="message-video" poster="${getVideoThumbnail(message.file_url)}">
+                        <source src="${message.file_url}" type="${message.file_type}">
+                        Your browser does not support the video tag.
+                    </video>
+                    <div class="message-meta">
+                        <span class="message-time">${timeString}</span>
+                        ${isSentByMe ? '<i class="fas fa-check-double read-receipt"></i>' : ''}
+                    </div>
+                </div>`;
+            break;
+            
+        case 'file':
+            content = `
+                <small class="group-sender-name">${senderName}</small>
+                <div class="message-file document">
+                    <div class="file-icon">
+                        <i class="fas ${getFileIcon(message.file_type)}"></i>
+                    </div>
+                    <div class="file-info">
+                        <div class="file-name">${message.text}</div>
+                        <div class="file-size">${formatFileSize(message.file_size)}</div>
+                        <a href="${message.file_url}" download class="download-link">
+                            <i class="fas fa-download"></i> Download
+                        </a>
+                    </div>
+                    <div class="message-meta">
+                        <span class="message-time">${timeString}</span>
+                        ${isSentByMe ? '<i class="fas fa-check-double read-receipt"></i>' : ''}
+                    </div>
+                </div>`;
+            break;
+            
+        default:
+            // Regular text message
+            content = `
+                <small class="group-sender-name">${senderName}</small>
+                <div class="message-text">${message.text}</div>
+                <div class="message-meta">
+                    <span class="message-time">${timeString}</span>
+                </div>`;
+    }
     
+    messageDiv.innerHTML = content;
     messagesContainer.appendChild(messageDiv);
 }
+
 function handleNewGroupMessage(message) {
     const currentUser = getCurrentUser();
     const isSentByMe = message.sender === currentUser.uid;
@@ -2150,8 +2253,12 @@ function handleNewGroupMessage(message) {
     
     groupMessagesData[message.group_id].push(newMessage);
     
-    // Render message if in active group chat
-    if (message.group_id === currentGroupId) {
+    // Render message if:
+    // 1. It's in the active group (either sent or received)
+    // OR
+    // 2. We sent it (show our own messages immediately)
+    if (message.group_id === currentGroupId || 
+        (isSentByMe && currentGroupId === null)) {  // Also handle case when no group is open
         // Get the group from groupsData
         const group = groupsData.find(g => g.id === message.group_id);
         if (group) {
@@ -3307,112 +3414,108 @@ async function handleFileUpload(file, type) {
         const user = getCurrentUser();
         if (!user?.token) throw new Error("User not authenticated");
 
-        // Show upload progress indicator
+        // Show upload progress
+        const uploadId = `upload-${Date.now()}`;
         const progressDiv = document.createElement('div');
+        progressDiv.id = uploadId;
         progressDiv.className = 'upload-progress';
         progressDiv.innerHTML = `
             <div class="upload-progress-inner">
-                <i class="fas fa-upload"></i>
-                <span>Uploading ${file.name}...</span>
+                <div class="upload-progress-bar" style="width: 0%"></div>
+                <div class="upload-info">
+                    <span class="upload-filename">${file.name}</span>
+                    <span class="upload-percent">0%</span>
+                    <button class="cancel-upload">×</button>
+                </div>
             </div>
         `;
         messagesContainer.appendChild(progressDiv);
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
 
+        // Add cancel button handler
+        progressDiv.querySelector('.cancel-upload').addEventListener('click', () => {
+            // You might need to implement actual cancellation logic
+            progressDiv.remove();
+            throw new Error('Upload cancelled by user');
+        });
+
         // Create FormData
         const formData = new FormData();
         formData.append('file', file);
 
-        try {
-            // Upload file
-            const response = await fetch(`${BACKEND_URL}/upload`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${user.token}`
-                },
-                body: formData
-            });
+        // Upload with progress tracking
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', `${BACKEND_URL}/upload`, true);
+        xhr.setRequestHeader('Authorization', `Bearer ${user.token}`);
 
-            // Remove progress indicator
-            progressDiv.remove();
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.detail || 'Upload failed');
-            }
-
-            const data = await response.json();
-            if (!data.success || !data.file_url) {
-                throw new Error('Invalid response from server');
-            }
-            
-            // Create base message with file data
-            const messageData = {
-                text: file.name,
-                file_url: data.file_url,
-                file_type: data.file_type || type,
-                file_size: data.file_size || file.size,
-                sender: user.uid,
-                timestamp: new Date().toISOString()
-            };
-
-            // Create a local copy for rendering with the correct type
-            const localMessageData = {...messageData, type};
-
-            if (currentChatUID) {
-                // Private chat - send standard message format to server
-                const serverMessageData = {
-                    ...messageData,
-                    type: "message",
-                    receiver: currentChatUID
-                };
+        // Track upload progress
+        xhr.upload.onprogress = (e) => {
+            if (e.lengthComputable) {
+                const percent = Math.round((e.loaded / e.total) * 100);
+                const progressBar = progressDiv.querySelector('.upload-progress-bar');
+                const percentText = progressDiv.querySelector('.upload-percent');
                 
-                // Send via WebSocket
-                ws.send(JSON.stringify(serverMessageData));
-                
-                // Handle locally with file type for proper rendering
-                handleNewMessage(localMessageData);
-            } else if (currentGroupId) {
-                // Group chat - send standard group message format to server
-                const serverMessageData = {
-                    ...messageData,
-                    type: "group_message",
-                    group_id: currentGroupId
-                };
-                
-                // Send via WebSocket
-                ws.send(JSON.stringify(serverMessageData));
-                
-                // Handle locally with file type for proper rendering
-                handleNewGroupMessage(localMessageData);
+                progressBar.style.width = `${percent}%`;
+                percentText.textContent = `${percent}%`;
             }
+        };
 
-        } catch (error) {
-            // Remove progress indicator if still present
-            if (progressDiv.parentNode) {
-                progressDiv.remove();
-            }
-            
-            // Show error message
-            const errorDiv = document.createElement('div');
-            errorDiv.className = 'message-error';
-            errorDiv.textContent = error.message || 'Failed to upload file';
-            messagesContainer.appendChild(errorDiv);
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
-            
-            // Auto-remove error message after 5 seconds
-            setTimeout(() => {
-                if (errorDiv.parentNode) {
-                    errorDiv.remove();
+        // Handle response
+        xhr.onload = () => {
+            if (xhr.status === 200) {
+                const response = JSON.parse(xhr.responseText);
+                if (response.success) {
+                    // Remove progress indicator
+                    progressDiv.remove();
+
+                    // Create and send message
+                    const messageData = {
+                        text: file.name,
+                        file_url: response.file_url,
+                        file_type: response.file_type,
+                        file_size: response.file_size,
+                        sender: user.uid,
+                        timestamp: new Date().toISOString()
+                    };
+
+                    if (currentChatUID) {
+                        // Private chat
+                        ws.send(JSON.stringify({
+                            type: "message",
+                            receiver: currentChatUID,
+                            ...messageData
+                        }));
+                        handleNewMessage({...messageData, type});
+                    } else if (currentGroupId) {
+                        // Group chat
+                        ws.send(JSON.stringify({
+                            type: "group_message",
+                            group_id: currentGroupId,
+                            ...messageData
+                        }));
+                        handleNewGroupMessage({...messageData, type});
+                    }
+                } else {
+                    throw new Error(response.error || 'Upload failed');
                 }
-            }, 5000);
-            
-            throw error;
-        }
+            } else {
+                throw new Error(`Upload failed: ${xhr.statusText}`);
+            }
+        };
+
+        xhr.onerror = () => {
+            throw new Error('Upload failed');
+        };
+
+        xhr.send(formData);
 
     } catch (error) {
         console.error('File upload failed:', error);
-        alert(error.message || 'Failed to upload file. Please try again.');
+        showMessageError(error.message || 'Failed to upload file');
+        
+        // Remove progress indicator if still present
+        const progressDiv = document.getElementById(uploadId);
+        if (progressDiv) progressDiv.remove();
     }
 }
 
@@ -3535,4 +3638,44 @@ function handleKeyDown(e) {
             messageInput.value = '';
         }
     }
+}
+// Helper function to get file icon based on type
+function getFileIcon(fileType) {
+    if (!fileType) return 'fa-file';
+    
+    if (fileType.includes('pdf')) return 'fa-file-pdf';
+    if (fileType.includes('word')) return 'fa-file-word';
+    if (fileType.includes('excel')) return 'fa-file-excel';
+    if (fileType.includes('zip')) return 'fa-file-archive';
+    
+    return 'fa-file';
+}
+// Helper function to get video thumbnail (you might need to implement this differently)
+function getVideoThumbnail(videoUrl) {
+    // In a real app, you might want to generate thumbnails on upload
+    return ''; // Return a placeholder or actual thumbnail URL
+}
+
+// Function to open image in lightbox
+function openImagePreview(imageUrl) {
+    // Implement a lightbox or modal to view the image
+    const lightbox = document.createElement('div');
+    lightbox.className = 'image-lightbox';
+    lightbox.innerHTML = `
+        <div class="lightbox-content">
+            <img src="${imageUrl}" alt="Preview">
+            <button class="close-lightbox">&times;</button>
+        </div>
+    `;
+    document.body.appendChild(lightbox);
+    
+    lightbox.querySelector('.close-lightbox').addEventListener('click', () => {
+        lightbox.remove();
+    });
+    
+    lightbox.addEventListener('click', (e) => {
+        if (e.target === lightbox) {
+            lightbox.remove();
+        }
+    });
 }
