@@ -951,10 +951,13 @@ ALLOWED_FILE_TYPES = {
 }
 
 # Update the file upload endpoint
+from io import BytesIO  # 🔧 Import nécessaire
+
+
 @app.post("/upload")
 async def upload_file(
-    file: UploadFile = File(...),
-    authorization: str = Header(None)
+        file: UploadFile = File(...),
+        authorization: str = Header(None)
 ):
     try:
         if not authorization:
@@ -968,7 +971,7 @@ async def upload_file(
         # Check file size
         file_size = 0
         file_content = bytearray()
-        
+
         # Read file in chunks
         while chunk := await file.read(8192):
             file_size += len(chunk)
@@ -1018,8 +1021,8 @@ async def upload_file(
                     "eager_async": True
                 })
 
-            # Upload file
-            upload_result = cloudinary.uploader.upload(file_content, **upload_options)
+            # ✅ Convert file_content to BytesIO before uploading
+            upload_result = cloudinary.uploader.upload(BytesIO(file_content), **upload_options)
 
             if not upload_result or "secure_url" not in upload_result:
                 raise HTTPException(
@@ -1056,8 +1059,6 @@ async def upload_file(
     except Exception as e:
         print(f"Upload error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
-
-
 
 
 # Get_uploads
