@@ -153,7 +153,6 @@ async def logout_user():
 
 # ✅ WebSocket Endpoint
 @app.websocket("/ws")
-@app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     """Handles real-time chat via WebSockets with improved message handling."""
     await websocket.accept()
@@ -511,27 +510,49 @@ async def get_messages(user_id: str, contact_id: str, request: Request, limit: O
     for msg in sent_query.stream():
         data = msg.to_dict()
         try:
-            messages.append({
+            message = {
                 "sender": data["sender"],
                 "receiver": data["receiver"],
                 "text": decrypt_message(data["message"]),
-                "timestamp": data["timestamp"]
-            })
+                "timestamp": data["timestamp"],
+                "type": data.get("type", "text")  # Default to text if not specified
+            }
+            
+            # Add file metadata if present
+            if "file_url" in data:
+                message.update({
+                    "file_url": data["file_url"],
+                    "file_type": data["file_type"],
+                    "file_size": data["file_size"]
+                })
+                
+            messages.append(message)
         except Exception as e:
-            print(f"Error decrypting message: {e}")
+            print(f"Error processing message:/decripting {e}")
     
     # Process received messages
     for msg in received_query.stream():
         data = msg.to_dict()
         try:
-            messages.append({
+            message = {
                 "sender": data["sender"],
                 "receiver": data["receiver"],
                 "text": decrypt_message(data["message"]),
-                "timestamp": data["timestamp"]
-            })
+                "timestamp": data["timestamp"],
+                "type": data.get("type", "text")  # Default to text if not specified
+            }
+            
+            # Add file metadata if present
+            if "file_url" in data:
+                message.update({
+                    "file_url": data["file_url"],
+                    "file_type": data["file_type"],
+                    "file_size": data["file_size"]
+                })
+                
+            messages.append(message)
         except Exception as e:
-            print(f"Error decrypting message: {e}")
+            print(f"Error processing message: /decripting {e}")
     
     # Sort messages by timestamp (newest first)
     messages.sort(key=lambda x: x["timestamp"] if x["timestamp"] else datetime.min, reverse=True)
@@ -802,15 +823,25 @@ async def get_group_messages(group_id: str, request: Request, limit: Optional[in
     for msg in query.stream():
         data = msg.to_dict()
         try:
-            messages.append({
-                "id": msg.id,
+            message = {
                 "group_id": data["group_id"],
                 "sender": data["sender"],
                 "text": decrypt_message(data["message"]),
-                "timestamp": data["timestamp"]
-            })
+                "timestamp": data["timestamp"],
+                "type": data.get("type", "text")  # Default to text if not specified
+            }
+            
+            # Add file metadata if present
+            if "file_url" in data:
+                message.update({
+                    "file_url": data["file_url"],
+                    "file_type": data["file_type"],
+                    "file_size": data["file_size"]
+                })
+                
+            messages.append(message)
         except Exception as e:
-            print(f"Error decrypting message: {e}")
+            print(f"Error processing message: {e}")
     
     return messages
 @app.post("/set_username")
