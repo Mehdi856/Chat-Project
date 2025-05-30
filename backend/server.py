@@ -950,9 +950,7 @@ ALLOWED_FILE_TYPES = {
     "application/x-rar-compressed"
 }
 
-# Update the file upload endpoint
 from io import BytesIO  # 🔧 Import nécessaire
-
 
 @app.post("/upload")
 async def upload_file(
@@ -995,16 +993,16 @@ async def upload_file(
         unique_filename = f"{uid}_{uuid.uuid4()}{file_ext}"
 
         try:
-            # Upload to Cloudinary with optimizations
+            # Set base upload options
             upload_options = {
-                "resource_type": "auto",
                 "folder": f"chat_files/{uid}",
-                "public_id": os.path.splitext(unique_filename)[0],  # Remove extension as Cloudinary adds it
+                "public_id": os.path.splitext(unique_filename)[0],
                 "overwrite": True
             }
 
-            # Add specific optimizations based on file type
+            # Détermine le type de ressource Cloudinary
             if content_type.startswith('image/'):
+                upload_options["resource_type"] = "image"
                 upload_options.update({
                     "eager": [
                         {"width": 800, "height": 800, "crop": "limit", "quality": "auto"},
@@ -1013,15 +1011,18 @@ async def upload_file(
                     "eager_async": True
                 })
             elif content_type.startswith('video/'):
+                upload_options["resource_type"] = "video"
                 upload_options.update({
-                    "resource_type": "video",
                     "eager": [
                         {"width": 640, "height": 480, "crop": "limit", "quality": "auto"}
                     ],
                     "eager_async": True
                 })
+            else:
+                # PDF, fichiers texte, zip, etc.
+                upload_options["resource_type"] = "raw"
 
-            # ✅ Convert file_content to BytesIO before uploading
+            # ✅ Upload vers Cloudinary
             upload_result = cloudinary.uploader.upload(BytesIO(file_content), **upload_options)
 
             if not upload_result or "secure_url" not in upload_result:
@@ -1030,7 +1031,7 @@ async def upload_file(
                     detail="Failed to upload file to storage"
                 )
 
-            # Store file info in Firestore
+            # 🔥 Enregistrer dans Firestore
             db.collection("uploads").add({
                 "uid": uid,
                 "filename": file.filename,
@@ -1059,7 +1060,6 @@ async def upload_file(
     except Exception as e:
         print(f"Upload error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
-
 
 # Get_uploads
 @app.get("/uploads/{uid}")
