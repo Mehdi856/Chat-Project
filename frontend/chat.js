@@ -479,9 +479,9 @@ function renderMessage(message) {
                     <div class="file-info">
                         <div class="file-name">${message.text}</div>
                         <div class="file-size">${formatFileSize(message.file_size)}</div>
-                        <a href="${message.file_url}" download class="download-link">
+                        <button class="download-link" data-url="${message.file_url}" data-filename="${message.text}">
                             <i class="fas fa-download"></i> Download
-                        </a>
+                        </button>
                     </div>
                     <div class="message-meta">
                         <span class="message-time">${timeString}</span>
@@ -1119,7 +1119,52 @@ console.log("Message input:", document.getElementById('message-input'));
             typingIndicator.style.display = "none";
         }, 2000);
     });
-
+    // Handle file downloads
+    document.addEventListener('click', async (e) => {
+        if (e.target.classList.contains('download-link') || e.target.closest('.download-link')) {
+            e.preventDefault();
+            const downloadBtn = e.target.classList.contains('download-link') ? e.target : e.target.closest('.download-link');
+            const fileUrl = downloadBtn.dataset.url;
+            const fileName = downloadBtn.dataset.filename;
+            
+            try {
+                // Show loading state
+                downloadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Downloading...';
+                
+                // Fetch the file with authorization
+                const user = getCurrentUser();
+                const response = await fetch(fileUrl, {
+                    headers: {
+                        Authorization: `Bearer ${user.token}`
+                    }
+                });
+                
+                if (!response.ok) throw new Error('Failed to download file');
+                
+                // Get the blob data
+                const blob = await response.blob();
+                
+                // Create download link
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = fileName || 'download';
+                document.body.appendChild(a);
+                a.click();
+                
+                // Clean up
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+                
+            } catch (error) {
+                console.error('Download failed:', error);
+                alert('Failed to download file. Please try again.');
+            } finally {
+                // Reset button state
+                downloadBtn.innerHTML = '<i class="fas fa-download"></i> Download';
+            }
+        }
+    });
     logoutBtn.addEventListener("click", logoutUser);
     document.getElementById('voice-call-btn').addEventListener('click', () => initiateCall('voice'));
     document.getElementById('video-call-btn').addEventListener('click', () => initiateCall('video'));
@@ -2213,9 +2258,9 @@ function renderGroupMessage(message, members) {
                     <div class="file-info">
                         <div class="file-name">${message.text}</div>
                         <div class="file-size">${formatFileSize(message.file_size)}</div>
-                        <a href="${message.file_url}" download class="download-link">
+                        <button class="download-link" data-url="${message.file_url}" data-filename="${message.text}">
                             <i class="fas fa-download"></i> Download
-                        </a>
+                        </button>
                     </div>
                     <div class="message-meta">
                         <span class="message-time">${timeString}</span>

@@ -4571,3 +4571,90 @@ input:checked + .privacy-slider:before {
     font-size: 2rem;
     cursor: pointer;
 }
+
+.message-file.document {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    background: #f5f5f5;
+    border-radius: 12px;
+    max-width: 400px;
+    gap: 12px;
+}
+
+.file-icon {
+    font-size: 2rem;
+    color: #555;
+}
+
+.file-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.file-name {
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 4px;
+    color: #333333; /* Dark gray for better readability */
+}
+
+.file-size {
+    font-size: 0.8rem;
+    color: #666;
+    margin-bottom: 8px;
+}
+
+.download-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: #ffffff; /* White background */
+    color: #333333; /* Dark gray text */
+    border: 1px solid #e0e0e0; /* Light gray border */
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+
+.download-link:hover {
+    background: #f5f5f5;
+    transform: translateY(-1px);
+}
+
+.download-link i {
+    font-size: 0.9rem;
+}
+
+/* Message sent/received styles for files */
+.message.sent .message-file.document {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.message.received .message-file.document {
+    background: #f5f5f5;
+}
+
+/* Keep file name dark in both sent and received messages */
+.message.sent .file-name,
+.message.received .file-name {
+    color: #333333;
+}
+
+/* Keep download button consistent in both sent and received messages */
+.message.sent .download-link,
+.message.received .download-link {
+    background: #ffffff;
+    color: #333333;
+    border: 1px solid #e0e0e0;
+}
+
+.message.sent .download-link:hover,
+.message.received .download-link:hover {
+    background: #f5f5f5;
+}
