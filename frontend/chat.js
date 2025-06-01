@@ -745,8 +745,8 @@ function handleNewMessage(message) {
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
     
-    // Only increment unread count for received messages
-    if (!isSentByMe) {
+    // Only increment unread count for received messages if not currently viewing this chat
+    if (!isSentByMe && contactUID !== currentChatUID) {
         unreadMessages[contactUID] = (unreadMessages[contactUID] || 0) + 1;
     }
     
@@ -3477,19 +3477,14 @@ async function handleFileUpload(file, type) {
         messagesContainer.appendChild(progressDiv);
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
 
-        // Add cancel button handler
-        progressDiv.querySelector('.cancel-upload').addEventListener('click', () => {
-            // You might need to implement actual cancellation logic
-            progressDiv.remove();
-            throw new Error('Upload cancelled by user');
-        });
-
         // Create FormData
         const formData = new FormData();
         formData.append('file', file);
 
-        // Upload with progress tracking
+        // Create XHR request
         const xhr = new XMLHttpRequest();
+        window.currentXHR = xhr; // Store for potential cancellation
+        
         xhr.open('POST', `${BACKEND_URL}/upload`, true);
         xhr.setRequestHeader('Authorization', `Bearer ${user.token}`);
 
@@ -3507,13 +3502,15 @@ async function handleFileUpload(file, type) {
 
         // Handle response
         xhr.onload = () => {
+            window.currentXHR = null; // Clear when done
+            
             if (xhr.status === 200) {
                 const response = JSON.parse(xhr.responseText);
                 if (response.success) {
                     // Remove progress indicator
                     progressDiv.remove();
 
-                    // Create and send message
+                    // Create message data
                     const messageData = {
                         text: file.name,
                         file_url: response.file_url,
@@ -3523,6 +3520,55 @@ async function handleFileUpload(file, type) {
                         timestamp: new Date().toISOString()
                     };
 
+                    // Determine message type based on file type
+                    let messageType;
+                    if (response.file_type.startsWith('image/')) {
+                        messageType = 'image';
+                    } else if (response.file_type.startsWith('video/')) {
+                        messageType = 'video';
+                    } else {
+                        messageType = 'file';
+                    }
+
+                    // Add to local messages data immediately
+                    if (currentChatUID) {
+                        // Private chat
+                        if (!messagesData[currentChatUID]) {
+                            messagesData[currentChatUID] = [];
+                        }
+                        messagesData[currentChatUID].push({
+                            ...messageData,
+                            type: messageType
+                        });
+                        renderMessage({
+                            ...messageData,
+                            type: messageType
+                        });
+                    } else if (currentGroupId) {
+                        // Group chat
+                        if (!groupMessagesData[currentGroupId]) {
+                            groupMessagesData[currentGroupId] = [];
+                        }
+                        groupMessagesData[currentGroupId].push({
+                            ...messageData,
+                            type: messageType,
+                            group_id: currentGroupId
+                        });
+                        
+                        // Get members for rendering
+                        const group = groupsData.find(g => g.id === currentGroupId);
+                        if (group) {
+                            getGroupMembersDetails(group.members).then(members => {
+                                renderGroupMessage({
+                                    ...messageData,
+                                    type: messageType,
+                                    group_id: currentGroupId
+                                }, members);
+                            });
+                        }
+                    }
+
+                    // Send via WebSocket
                     if (currentChatUID) {
                         // Private chat
                         ws.send(JSON.stringify({
@@ -3530,7 +3576,6 @@ async function handleFileUpload(file, type) {
                             receiver: currentChatUID,
                             ...messageData
                         }));
-                        handleNewMessage({...messageData, type});
                     } else if (currentGroupId) {
                         // Group chat
                         ws.send(JSON.stringify({
@@ -3538,8 +3583,10 @@ async function handleFileUpload(file, type) {
                             group_id: currentGroupId,
                             ...messageData
                         }));
-                        handleNewGroupMessage({...messageData, type});
                     }
+
+                    // Clear file input and preview
+                    clearFilePreview();
                 } else {
                     throw new Error(response.error || 'Upload failed');
                 }
@@ -3549,7 +3596,14 @@ async function handleFileUpload(file, type) {
         };
 
         xhr.onerror = () => {
+            window.currentXHR = null;
             throw new Error('Upload failed');
+        };
+
+        xhr.onabort = () => {
+            window.currentXHR = null;
+            progressDiv.remove();
+            clearFilePreview();
         };
 
         xhr.send(formData);
@@ -3562,6 +3616,16 @@ async function handleFileUpload(file, type) {
         const progressDiv = document.getElementById(uploadId);
         if (progressDiv) progressDiv.remove();
     }
+}
+
+// Add this helper function to clear file preview
+function clearFilePreview() {
+    currentFile = null;
+    currentFileType = null;
+    document.getElementById('file-preview').style.display = 'none';
+    document.getElementById('image-upload').value = '';
+    document.getElementById('video-upload').value = '';
+    document.getElementById('file-upload').value = '';
 }
 
 // Add CSS for upload progress and error messages
@@ -3624,6 +3688,8 @@ function handleFileSelect(e) {
                     <button class="remove-file-btn">&times;</button>
                 </div>
             `;
+            // Add event listener to the cancel button
+            previewDiv.querySelector('.remove-file-btn').addEventListener('click', cancelFileUpload);
         };
         reader.readAsDataURL(file);
     } else if (currentFileType === 'video') {
@@ -3638,6 +3704,8 @@ function handleFileSelect(e) {
                 <button class="remove-file-btn">&times;</button>
             </div>
         `;
+        // Add event listener to the cancel button
+        previewDiv.querySelector('.remove-file-btn').addEventListener('click', cancelFileUpload);
     } else {
         previewDiv.innerHTML = `
             <div class="file-preview-icon">
@@ -3648,19 +3716,31 @@ function handleFileSelect(e) {
                 <button class="remove-file-btn">&times;</button>
             </div>
         `;
+        // Add event listener to the cancel button
+        previewDiv.querySelector('.remove-file-btn').addEventListener('click', cancelFileUpload);
+    }
+}
+
+// Add this new function to handle file upload cancellation
+function cancelFileUpload() {
+    currentFile = null;
+    currentFileType = null;
+    document.getElementById('file-preview').style.display = 'none';
+    
+    // Reset all file inputs
+    document.getElementById('image-upload').value = '';
+    document.getElementById('video-upload').value = '';
+    document.getElementById('file-upload').value = '';
+    
+    // If there's an ongoing upload, cancel it
+    if (window.currentXHR) {
+        window.currentXHR.abort();
+        window.currentXHR = null;
     }
     
-    // Add remove file button handler
-    previewDiv.querySelector('.remove-file-btn').addEventListener('click', (e) => {
-        e.stopPropagation();
-        currentFile = null;
-        currentFileType = null;
-        e.target.closest('.file-preview').style.display = 'none';
-        // Reset file inputs
-        document.getElementById('image-upload').value = '';
-        document.getElementById('video-upload').value = '';
-        document.getElementById('file-upload').value = '';
-    });
+    // Remove any upload progress indicators
+    const progressDivs = document.querySelectorAll('.upload-progress');
+    progressDivs.forEach(div => div.remove());
 }
 // Separate handler for send button click
 function handleSendMessage(e) {
