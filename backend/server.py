@@ -641,13 +641,14 @@ async def respond_to_contact_request(request_id: str, response_data: dict, reque
         
         # Notify the sender that request was accepted
         await websocket_manager.send_notification(sender_uid, {
-            "type": "notification",
-            "notification_type": "contact_request_accepted",
-            "receiver": receiver_uid,
+            "type": "contact_request_accepted",
+            "request_id": request_id,
+            "receiver_uid": receiver_uid,
+            "receiver_name": receiver_data.get("name", "Unknown"),
+            "timestamp": datetime.now().isoformat()
         })
     
     return {"message": f"Contact request {response}ed successfully"}
-
 
 # ✅ Create Group
 @app.post("/groups")

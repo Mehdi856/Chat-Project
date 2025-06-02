@@ -610,14 +610,17 @@ async function respondToContactRequest(requestId, response) {
 
         if (!responseData.ok) throw new Error(`Server error: ${responseData.statusText}`);
 
+        // Remove from pending requests
         pendingContactRequests = pendingContactRequests.filter(req => req.request_id !== requestId);
         updateNotificationCount();
         renderNotifications();
         
         if (response === "accept") {
-            await loadContacts();
+        
+             await loadContacts();
         }
         
+        // Show success message
         alert(`Contact request ${response === "accept" ? "accepted" : "declined"} successfully!`);
     } catch (error) {
         console.error(`❌ Failed to ${response} contact request:`, error);
@@ -673,6 +676,9 @@ function setupWebSocket(user) {
                     handleNewMessage(data);
                 } else if (data.type === "group_message") {
                     handleNewGroupMessage(data);
+                } else if (data.type === "contact_request_accepted") {
+                    // Handle contact request acceptance
+                    handleContactRequestAccepted(data);
                 } else if (data.type === "typing") {
                     showTypingIndicator(data.sender);
                 } else if (data.type === "group_typing") {
@@ -3803,4 +3809,18 @@ function openImagePreview(imageUrl) {
             lightbox.remove();
         }
     });
+}
+async function handleContactRequestAccepted(data) {
+    const user = getCurrentUser();
+    if (!user) return;
+
+    // Show a notification to the user
+    alert(`Your contact request to ${data.receiver_name} has been accepted!`);
+
+    // Reload contacts to show the new contact
+    await loadContacts();
+    
+    
+    // Update notification count if needed
+    await fetchPendingContactRequests();
 }
