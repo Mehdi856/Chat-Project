@@ -94,6 +94,7 @@ class WebSocketManager:
                 print(f"🔔 Notification sent to {uid}")
                 return True
         return False
+    
 
     async def send_group_message(self, group_id: str, sender_uid: str, message_data: dict, members: List[str]):
         """Sends a message to all online members of a group."""
@@ -185,6 +186,7 @@ class WebSocketManager:
         
         if tasks:
             await asyncio.gather(*tasks, return_exceptions=True)
+    
 
     async def send_profile_picture_update(self, uid: str, profile_picture_url: str):
         """Notify all connected devices of a user about their profile picture update."""
@@ -205,3 +207,22 @@ class WebSocketManager:
                 print(f"🖼️ Profile picture update sent to {uid}")
                 return True
         return False
+    async def send_group_update(self, group_id: str, group_data: dict, members: List[str]):
+        """Sends updated group information to all members."""
+        tasks = []
+        for member_uid in members:
+            if member_uid in self.active_connections:
+                for websocket in list(self.active_connections[member_uid]):
+                    try:
+                        tasks.append(websocket.send_json({
+                            "type": "group_update",
+                            "group_id": group_id,
+                            "group_data": group_data
+                        }))
+                    except Exception as e:
+                        print(f"❌ Error sending group update to {member_uid}: {e}")
+                        await self.disconnect(member_uid, websocket)
+        
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
+            print(f"🔄 Group update sent for group {group_id}")

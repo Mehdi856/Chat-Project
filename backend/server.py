@@ -1163,6 +1163,9 @@ async def add_group_members(group_id: str, member_data: dict, request: Request):
     # Update group
     group_ref.update({"members": current_members})
     
+    # Get updated group data
+    updated_group_data = group_ref.get().to_dict()
+    
     # Add group to new members' groups list
     for member_uid in added_members:
         user_ref = db.collection("users").document(member_uid)
@@ -1183,6 +1186,13 @@ async def add_group_members(group_id: str, member_data: dict, request: Request):
                 "group_name": group_data["name"],
                 "adder_uid": uid
             })
+    
+    # Send group update to ALL members (including existing ones)
+    await websocket_manager.send_group_update(
+        group_id=group_id,
+        group_data=updated_group_data,
+        members=current_members
+    )
     
     return {"message": "Members added successfully", "added_members": added_members}
 
@@ -1505,9 +1515,20 @@ async def respond_add_request(group_id: str, request_id: str, response_data: dic
                 if group_id not in user_groups:
                     user_groups.append(group_id)
                     user_ref.update({"groups": user_groups})
+        
+        # Get updated group data
+        updated_group_data = group_ref.get().to_dict()
+        
+        # Send update to all members
+        await websocket_manager.send_group_update(
+            group_id=group_id,
+            group_data=updated_group_data,
+            members=current_members
+        )
+        
         add_requests_ref.document(request_id).update({"status": "accepted"})
-        # Optionally: notify user(s)
         return {"message": "Member added to group"}
     else:
         add_requests_ref.document(request_id).update({"status": "declined"})
         return {"message": "Request declined"}
+    

@@ -674,7 +674,8 @@ function setupWebSocket(user) {
                 // Handle normal messages
                 if (data.type === "message") {
                     handleNewMessage(data);
-                } else if (data.type === "group_message") {
+                }
+                 else if (data.type === "group_message") {
                     handleNewGroupMessage(data);
                 } else if (data.type === "contact_request_accepted") {
                     // Handle contact request acceptance
@@ -701,6 +702,10 @@ function setupWebSocket(user) {
                     handleICECandidate(data);
                 } else if (data.type === 'webrtc_end') {
                     handleCallEnd();
+                }
+                else if (data.type === 'group_update') {
+                    updategroupinformation(data)
+                    
                 }
             }
         } catch (error) {
@@ -3823,4 +3828,19 @@ async function handleContactRequestAccepted(data) {
     
     // Update notification count if needed
     await fetchPendingContactRequests();
+}
+async function updategroupinformation(data){
+// Update the current group data if we're viewing this group
+        if (currentGroupId === data.group_id) {
+            currentGroupData = data.group_data;
+        }
+            
+        // Reload groups to get the updated information
+        await loadGroups();
+         
+       // If we're in the group chat that was updated, refresh the view
+        if (currentGroupId === data.group_id) {
+           await openGroupChat(currentGroupData);
+        }
+
 }
