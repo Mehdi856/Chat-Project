@@ -23,4 +23,4 @@ def save_message(sender_id, receiver_id, message):
         "sender": sender_id,
         "receiver": receiver_id,
         "message": message
-    })
+    });
